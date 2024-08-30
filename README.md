@@ -3,7 +3,8 @@
 For the deployed html website use the following link
 https://jkenney1123.github.io/Bayesian-Final-Exam/
 
-# Weibull Model with Conjugate Prior Problem 1
+# Weibull Model with Conjugate Prior 
+# Problem 1
 ## Objective
 This project aims to provide a comprehensive understanding of Bayesian inference applied to the Weibull model, leveraging conjugate priors and real-world data to draw meaningful conclusions.
 ## Project Overview
@@ -18,7 +19,8 @@ This project focuses on the application of the Weibull distribution, particularl
 ### Question 1.4
 - Analyze observed gear lifetime data to find and graph the posterior distribution. Calculate the posterior mean, variance, and a 95% posterior interval for the Weibull parameter θ using both analytical and numerical methods.
 
-# Bayesian Change-Point Model Analysis for Coal Mining Disaster Data
+# Bayesian Change-Point Model Analysis for Coal Mining Disaster Data 
+# Problem 2
 ## Objective
 The objective of this project is to fit a hierarchical change-point model to analyze the number of coal mining disasters in Great Britain from 1851 to 1962. Our analysis aims to identify potential shifts in disaster occurrence rates and to estimate the posterior distributions of the parameters involved.
 ## Project Overview
@@ -40,7 +42,8 @@ Welcome to the repository for our Bayesian Change-Point Model analysis for coal 
 ## Contributions
 This project provides insights into the application of Bayesian methods in change-point detection and demonstrates the use of Gibbs sampling and Metropolis Hastings algorithms in parameter estimation. The detailed analysis and results can aid in understanding the historical trends and patterns in coal mining disasters.
 
-# Model Comparison on Regression Models
+# Model Comparison on Regression Models 
+# Problem 3
 ## Objective
 The objective of this project is to compare two competing regression models, a linear model and a quadratic model, using a given dataset. We aim to determine the marginal distributions for each model and evaluate their performance using the Bayes factor. Additionally, we will explore how the Bayes factor changes when the prior distributions are replaced by improper constant priors.
 ## Project Overview
