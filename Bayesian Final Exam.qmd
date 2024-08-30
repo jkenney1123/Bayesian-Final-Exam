@@ -1,0 +1,1713 @@
+---
+title: "Bayesian Data Analysis Final Exam"
+author: "John Kenney"
+format:
+  html:
+    code-fold: true
+    # Table of contents
+    toc: true
+    toc-location: left
+    toc-title: Contents
+    # Section numbering
+    number-sections: true
+    css: styles.css
+    html-math-method: 
+      method: katex
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = F,warning = F)
+```
+
+# Problem 1: Weibull model with conjugate prior
+
+The Weibull distribution is a distribution that is often used for lifetimes of equipment/parts. It actually has two parameters but for the moment let’s assume that one of them is fixed. The Weibull(2) density is
+
+```{=tex}
+\begin{align*}
+f(x|\theta) &= 2\theta x \text{exp}(- \theta x^2) \\
+\end{align*}
+```
+for $x > 0$. The parameter $\theta$ is something like the “inverse lifetime” parameter. Large $\theta$ means short lifetimes, while small $\theta$ means long lifetimes. The mean of the distribution is $0.886\theta^{-\frac{1}{2}}$. Suppose we observe data $x_1,\dots,x_n$ as independent samples from the Weibull(2) distribution.
+
+## Question 1.1 (8 points)
+
+Show that the Gamma distribution, i.e. Ga($a, b$), is the conjugate prior distribution and derive the posterior distribution. Use the p.d.f. $\pi(\theta) = \frac{b^a}{\Gamma(a)}\theta^{a-1}\text{exp}(-b\theta)$.
+
+```{=tex}
+\begin{align*}
+f(x_1,\dots,x_n|\theta) &= \prod_{i = 1}^{n}2\theta x_i \text{exp}(-\theta x_i^2) = 2^n \theta^n \bigg(\prod_{i = 1}^{n}x_i\bigg) \text{exp}\bigg(-\theta \sum_{i= 1}^nx_i^2\bigg) \propto \theta^n \text{exp}\bigg(-\theta \sum_{i= 1}^nx_i^2\bigg)\\ 
+\pi(\theta) &= \frac{b^a}{\Gamma(a)}\theta^{a-1} \text{exp}(-b\theta) \propto \theta^{a-1} \text{exp}(-b\theta)\\
+\pi(\theta | x_1, \dots, x_n) &\propto f(x_1,\dots,x_n|\theta)\pi(\theta) \propto \theta^n \text{exp}\bigg(-\theta \sum_{i= 1}^nx_i^2\bigg)\theta^{a-1} \text{exp}(-b\theta)  = \theta^{a+n - 1} \text{exp}\bigg(-\theta \bigg( b + \sum_{i= 1}^nx_i^2\bigg)\bigg)\\
+\\
+\theta &\sim Ga(a,b)\\
+x_1,\dots,x_n|\theta &\sim \text{Weibull}(2)\\
+\theta|x_1,\dots,x_n &\sim Ga(a + n,  b + \sum_{i= 1}^n x_i^2) \\
+\end{align*}
+```
+
+\newpage
+## Question 1.2 (8 points)
+  
+Derive the marginal distribution $\pi(x_1,\dots,x_n)$. (Hint: There are two related ways to obtain the marginal, through $\pi(x_1,\dots,x_n) = \int f(x_1,\dots,x_n|\theta)\pi(\theta) d\theta$ or $\pi(x_1,\dots,x_n) = \frac{f(x_1,\dots,x_n|\theta)}{\pi(\theta|x_1,\dots,x_n)}$
+
+```{=tex}
+\begin{align*}
+\pi(x_1,\dots,x_n) &= \int f(x_1,\dots,x_n|\theta)\pi(\theta) d\theta \\
+&= \int_0^\infty 2^n \theta^n \bigg(\prod_{i = 1}^{n}x_i\bigg) \text{exp}\bigg(-\theta \sum_{i= 1}^nx_i^2\bigg) \frac{b^a}{\Gamma(a)}\theta^{a-1} \text{exp}(-b\theta) d\theta \\
+&= \frac{2^n b^a \bigg(\prod_{i = 1}^{n}x_i\bigg)}{\Gamma(a)} \int_0^\infty \theta^{a+n - 1} \text{exp}\bigg(-\theta \bigg( b + \sum_{i= 1}^nx_i^2\bigg)\bigg) d\theta\\
+&= \frac{2^n b^a \bigg(\prod_{i = 1}^{n}x_i\bigg)}{\Gamma(a)} \frac{\Gamma(a+n)}{\bigg( b + \sum_{i= 1}^nx_i^2\bigg)^{a+n}}\\
+\end{align*}
+```
+For this problem I could not think of a known distribution for the marginal distribution of the sample.
+
+## Question 1.3 (4 points)
+
+In one application, the lifetime of a kind of gear was measured in $1,000$ hours. Let $x = 1$ means the part lasted $1,000$ hours and $x = 1/2$ means the part lasted $500$ hours. Gears tend to last between $500$ and $5,000$ hours, with $1,000$ being a typical lifetime. This suggests a Gamma prior distribution for $\theta$ with $a = 1.4$ and $b = 2$. Obtain a graph of this prior density and argue that this choice of prior is reasonable given the information provided.
+
+```{r q1.3,out.width="70%",fig.align='center',fig.cap="$\\pi(\\theta)$"}
+# sim setting
+T <- 1000
+set.seed(7330)
+
+# get density for the domain 0 to 5
+prior.theta <- dgamma(seq(0,5,length.out = T),shape = 1.4,rate = 2)
+
+library(ggplot2)
+# plot prior
+df <- data.frame(x = seq(0,5,length.out = T),prior.theta = prior.theta)
+ggplot(data = df,aes(x = x,y = prior.theta)) + geom_line() + ylab("theta")
+```
+
+The mean of the prior is 0.7, and if we plug this value into the mean of the weibull(2) $0.886(.7)^{-\frac{1}{2}} = 1.058973$ which is in the expected interval. From this it seems that the gamma prior $a = 1.4$ and $b = 2$ works well into the expected behavior.
+
+\newpage
+
+## Question 1.4 (8 points)
+
+Suppose that we observed $n = 10$ with
+
+```{=tex}
+\begin{align*}
+x &= (0.25, 0.52, 0.60, 0.91, 0.97, 1.00, 1.07, 1.09, 1.18, 1.38).\\
+\end{align*}
+```
+Evidently this gear is fairly typical with lifetimes around $1,000$. Find and graph the posterior distribution. Give the posterior mean and variance. Give a $95\%$ posterior interval for $\theta$, using both analytical and numerical approaches.
+
+```{r q1.4.1,out.width="70%",fig.align='center',fig.cap="$\\pi(\\theta|x_1,\\dots,x_n)$"}
+set.seed(7330)
+# data stats 
+n <- 10
+x <- c(0.25, 0.52, 0.60, 0.91, 0.97, 1.00, 1.07, 1.09, 1.18, 1.38)
+x2 <- x^2
+x2. <- sum(x2)
+
+# prior settings
+a <- 1.4
+b <- 2
+
+# number of samples
+T <- 10000
+
+# simulate posterior
+post.theta <- rgamma(T,shape = (a+n),rate = (b + x2.)) 
+
+# calc posterior summary statistics
+post.mean <- mean(post.theta)
+post.var <- var(post.theta)
+
+lower.cl <- quantile(post.theta,probs = 0.025)
+upper.cl <- quantile(post.theta,probs = 0.975)
+
+# graphing posterior with mean and ci
+df.post.theta <- data.frame(theta = post.theta,group = rep("post.theta",T))
+
+ggplot(df.post.theta, aes(x = theta,fill = group,color = group)) +
+  geom_density(alpha=0.2) + geom_vline(xintercept = c(lower.cl,upper.cl),color = "limegreen")+ geom_vline(xintercept = post.mean, color = "black")
+```
+
+```{r q1.4.2,out.width="70%"}
+
+# creating table for numerical and analytical results of the posterior dist
+ numerical <- c(round(post.mean,5),round(post.var,5),paste("(",round(lower.cl,5),",",round(upper.cl,5),")"))
+ analytical <- c(round((a+n)/(b + x2.),5),round((a+n)/(b + x2.)^2,5),paste("(",round(qgamma(0.025,shape = (a+n),rate = (b + x2.)),5),",",round(qgamma(0.975,shape = (a+n),rate = (b + x2.)),5),")"))
+ 
+ table.q1 <- as.data.frame(rbind(numerical,analytical))
+ row.names(table.q1) <- c("Numerical","Analytical")
+ 
+ library(kableExtra)
+ knitr::kable(table.q1,booktabs = T,col.names = c("Posterior Mean","Posterior Variance", "95% Credible interval"),caption = "Numerical vs Analytical approaches") %>% 
+  kable_styling(latex_options = c("hold_position"))
+```
+
+\newpage
+
+# Problem 2: Change-point model
+
+Consider the following hierarchical change-point model for the number of occurrence $Y_i$ of some event during time interval $i$:
+
+```{=tex}
+\begin{align*}
+Y_i &\sim \begin{cases} \text{Poi}(\theta) \quad i = 1,\dots, k \\ \text{Poi}(\lambda) \quad i = k+1,\dots, n  \end{cases},\\
+\end{align*}
+```
+with the following prior formulation: $\theta \sim Ga(a_1,\beta_1)$ and $\lambda \sim Ga(a_2,\beta_2)$ with $\theta$ and $\lambda$ independent. We further assume $\beta_1 \sim IG(c_1,d_1)$ and $\beta_2 \sim IG(c_2,d_2)$. The p.d.f.’s of those priors are defined as below:
+
+```{=tex}
+\begin{align*}
+\pi(\theta|a_1,\beta_1) &= \frac{1}{\beta_1^{a_1}\Gamma(a_1)}\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \\
+\pi(\lambda|a_2,\beta_2) &= \frac{1}{\beta_2^{a_2}\Gamma(a_2)}\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg) \\
+\pi(\beta_1|c_1,d_1) &= \frac{1}{d_1^{c_1}\Gamma(c_1)}\bigg(\frac{1}{\beta_1}\bigg)^{c_1 + 1}\text{exp}\bigg(-\frac{1}{d_1 \beta_1}\bigg) \\
+\pi(\beta_2|c_2,d_2) &= \frac{1}{d_2^{c_2}\Gamma(c_2)}\bigg(\frac{1}{\beta_2}\bigg)^{c_2 + 1}\text{exp}\bigg(-\frac{1}{d_2 \beta_2}\bigg) \\
+\end{align*}
+```
+## Question 2.1 (10 points)
+
+Fit this model the “coal-data.txt”, which gives counts of coal mining disasters in Great Britain by year from 1851 to 1962, where disaster is defined as an accident resulting in the deaths of 10 or more minors. Set the hyperparameters to be reasonably non-informative to: $a_1 = a_2 = 0.5$, $c_1 = c_2 = 1$, and $d_1 = d_2 = 1$. Assume $k = 40$ (corresponding to year 1890). Derive full conditional distributions for $\theta$ and $\lambda$.
+
+```{=tex}
+\begin{align*}
+\pi(\theta|a_1,\beta_1) &= \frac{1}{\beta_1^{a_1}\Gamma(a_1)}\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \\
+\pi(\lambda|a_2,\beta_2) &= \frac{1}{\beta_2^{a_2}\Gamma(a_2)}\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg) \\
+\pi(\beta_1|c_1,d_1) &= \frac{1}{d_1^{c_1}\Gamma(c_1)}\bigg(\frac{1}{\beta_1}\bigg)^{c_1 + 1}\text{exp}\bigg(-\frac{1}{d_1 \beta_1}\bigg) \\
+\pi(\beta_2|c_2,d_2) &= \frac{1}{d_2^{c_2}\Gamma(c_2)}\bigg(\frac{1}{\beta_2}\bigg)^{c_2 + 1}\text{exp}\bigg(-\frac{1}{d_2 \beta_2}\bigg) \\
+f(y_1,\dots,y_n|\theta,\lambda) &= \prod_{i = 1}^k \frac{\theta^{y_i}\text{exp}(-\theta)}{y_i!}\prod_{i = k+1}^n \frac{\lambda^{y_i}\text{exp}(-\lambda)}{y_i!}\\
+\pi(\theta|a_1,\beta_1,y_1, \dots,y_k) &\propto f(y_1,\dots,y_k|\theta)\pi(\theta|a_1,\beta_1)\\ 
+&= \prod_{i = 1}^k \frac{\theta^{y_i}\text{exp}(-\theta)}{y_i!}\frac{1}{\beta_1^{a_1}\Gamma(a_1)}\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \\
+&\propto \theta^{\sum_{i = 1}^k y_i}\text{exp}(-k\theta)\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \\
+&= \theta^{a_1 + \sum_{i = 1}^k y_i - 1}\text{exp}\bigg(-\theta\bigg(\frac{k\beta_1 + 1}{\beta_1}\bigg)\bigg) \\
+\theta|a_1,\beta_1,y_1, \dots,y_k &\sim Ga\bigg(a_1 + \sum_{i = 1}^k y_i, \frac{k\beta_1 + 1}{\beta_1}\bigg) \\
+\pi(\lambda|a_2,\beta_2,y_{k+1}, \dots,y_n) &\propto f(y_{k+1},\dots,y_n|\lambda)\pi(\lambda|a_2,\beta_2)\\ 
+&= \prod_{i = k+1}^n \frac{\lambda^{y_i}\text{exp}(-\lambda)}{y_i!}  \frac{1}{\beta_2^{a_2}\Gamma(a_2)}\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg) \\
+& \propto \lambda^{\sum_{i = k+1}^{n} y_i}\text{exp}(-(n-k)\lambda)\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg)\\
+&= \lambda^{a_2 + \sum_{i = k+1}^{n} y_i - 1}\text{exp}\bigg(-\lambda\bigg(\frac{(n-k)\beta_2 + 1}{\beta_2}\bigg)\bigg)\\
+\lambda | a_2,\beta_2,y_{k+1}, \dots,y_n &\sim Ga\bigg(a_2 + \sum_{i = k+1}^{n} y_i, \frac{(n-k)\beta_2 + 1}{\beta_2}\bigg)\\
+\pi(\beta_1|\theta,a_1,c_1,d_1) &\propto \pi(\theta|a_1,\beta_1)\pi(\beta_1|c_1,d_1)\\
+&= \frac{1}{\beta_1^{a_1}\Gamma(a_1)}\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg)\frac{1}{d_1^{c_1}\Gamma(c_1)}\bigg(\frac{1}{\beta_1}\bigg)^{c_1 + 1}\text{exp}\bigg(-\frac{1}{d_1 \beta_1}\bigg)\\ 
+&\propto \bigg(\frac{1}{\beta_1}\bigg)^{a_1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg)\bigg(\frac{1}{\beta_1}\bigg)^{c_1 + 1}\text{exp}\bigg(-\frac{1}{d_1 \beta_1}\bigg)\\
+&= \bigg(\frac{1}{\beta_1}\bigg)^{a_1 + c_1 + 1}\text{exp}\bigg(-\frac{1}{\beta_1}\bigg(\frac{d_1\theta + 1}{d_1}\bigg)\bigg) \\
+\beta_1|\theta,a_1,c_1,d_1 &\sim IG\bigg(a_1 + c_1, \bigg(\frac{d_1\theta + 1}{d_1}\bigg)\bigg)\\
+\pi(\beta_2|\lambda,a_2,c_2,d_2) &\propto \pi(\lambda|a_2,\beta_2)\pi(\beta_2|c_2,d_2)\\
+& = \frac{1}{\beta_2^{a_2}\Gamma(a_2)}\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg)\frac{1}{d_2^{c_2}\Gamma(c_2)}\bigg(\frac{1}{\beta_2}\bigg)^{c_2 + 1}\text{exp}\bigg(-\frac{1}{d_2 \beta_2}\bigg) \\
+&\propto \bigg(\frac{1}{\beta_2}\bigg)^{a_2}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg)\bigg(\frac{1}{\beta_2}\bigg)^{c_2 + 1}\text{exp}\bigg(-\frac{1}{d_2 \beta_2}\bigg)\\
+&= \bigg(\frac{1}{\beta_2}\bigg)^{a_2 + c_2 + 1}\text{exp}\bigg(-\frac{1}{\beta_2}\bigg(\frac{d_2\lambda+1}{d_2}\bigg)\bigg)\\
+\beta_2|\lambda,a_2,c_2,d_2 &\sim IG\bigg(a_2 + c_2,\bigg(\frac{d_2\lambda+1}{d_2}\bigg)\bigg)
+\end{align*}
+```
+```{r q2 data}
+coal.miners <- read.table("coal_data.txt", col.names = c("year","disasters"))
+#head(coal.miners)
+```
+
+```{r q2 data plot,fig.align='center',fig.width=5,fig.height=2.5}
+
+library(ggplot2)
+df <- cbind(coal.miners,group = c(rep("time 1",40),rep("time 2",length(41:dim(coal.miners)[1]))))
+ggplot(df, aes(x = year,y = disasters,color = group)) + geom_point() #+ geom_histogram()
+```
+
+## Question 2.2 (10 points)
+
+Implement a Gibbs sampler to derive the posterior distributions of $\theta$, $\lambda$, and $R = \theta/\lambda$. Provide the histograms and kernel density estimates along with the posterior sample summaries: means, standard deviations, quantiles etc. What is meant by “convergence diagnosis”? Describe some tools you might use to assist in this regard. Present some evidence that the MCMC has reasonably converged.
+
+Convergence diagnostics are steps taken in analyzing the posterior samples and determining if the sequence is stable/stationary/converged to the "true value". Some options to determine whether sample estimates have not converged are:\
+look at a trace plot individually and jointly,\
+create multiple chains with different initial values and observe if all the chains converge to same value,\
+look at the autocorrelation if low autocorrelation then speed of mixing is fast and see if auto correlation drops over time if not this is an indicator that converge may be an issue or will be slow,\
+you can also use different statistical test such as Geweke statistic, Gelman-Rubin Statistic.
+
+Below we can see that comparing the trace plots of four chains with different starting values that they all converge to around the same value, so this indicates that there is no obvious convergence issues. The joint trace plot of $\theta$ and $\lambda$ also does not indicate that there are any convergence issues. The acf of each of the sequences drops really fast, so this indicates that there are no obvious mixing issues and fast movement in the parameter space. From each of these findings there seems to be no indication of convergence issues.
+
+```{r q2.2 chain ,fig.height= 2.5}
+gibbs.k <- function(y,a1 = 0.5, a2 = 0.5, c1 = 1,c2 = 1,d1 = 1,d2 = 1,k = 40,T = 10000, B = T/2,theta_initial,lambda_initial,R_initial,beta1_initial,beta2_initial,seed = 7330) {
+  # sim settings
+  set.seed(seed)
+  
+  # data settings
+  n <- length(y)
+  n1 <- k
+  n2 <- n-k
+  y1. <- sum(y[1:k])
+  y2. <- sum(y[(k+1):n])
+  
+  theta <- theta_initial
+  lambda <- lambda_initial
+  R <- R_initial
+  beta1 <- beta1_initial
+  beta2 <- beta2_initial
+  
+  # initializing storage
+  theta_store <- rep(NA,T+B)
+  lambda_store <- rep(NA,T+B)
+  R_store <- rep(NA,T+B)
+  beta1_store <- rep(NA,T+B)
+  beta2_store <- rep(NA,T+B)
+  
+  
+  
+  # gibbs sampler 
+  for(t in 1:(B+T)){
+    # draw theta
+    theta_shape <- a1 + y1.
+    theta_rate <- (k*beta1 + 1)/beta1
+    theta <- rgamma(1,shape = theta_shape,rate = theta_rate)
+    
+    # draw lambda
+    lambda_shape <- a2 + y2.
+    lambda_rate <- (n2*beta2 + 1)/beta2
+    lambda <- rgamma(1,shape = lambda_shape,rate = lambda_rate)
+    
+    # draw beta1
+    beta1_shape <- a1 + c1
+    beta1_rate <- (d1*theta + 1)/d1
+    beta1 <- 1/rgamma(1,shape = beta1_shape,rate = beta1_rate)
+    
+    # draw beta2
+    beta2_shape <- a2 + c2
+    beta2_rate <- (d2*lambda + 1)/d2
+    beta2 <- 1/rgamma(1,shape = beta2_shape,rate = beta2_rate)
+    
+    
+    
+    # store results
+    theta_store[t] <- theta
+    lambda_store[t] <- lambda
+    R_store[t] <- theta/lambda
+    beta1_store[t] <- beta1
+    beta2_store[t] <- beta2
+  }
+  return(list(theta_store = theta_store,
+              lambda_store = lambda_store,
+              R_store = R_store,
+              beta1_store = beta1_store,
+              beta2_store = beta2_store))
+}
+T <- 10000
+B <- T/2
+
+chain1 <- gibbs.k(y = coal.miners$disasters,theta_initial = 5,lambda_initial = 1,R_initial = 5,beta1_initial  = 3,beta2_initial = 4)
+
+chain2 <- gibbs.k(y = coal.miners$disasters,theta_initial = 0,lambda_initial = 10,R_initial = 0,beta1_initial  = 3,beta2_initial = 4)
+
+chain3 <- gibbs.k(y = coal.miners$disasters,theta_initial = 20,lambda_initial = 5,R_initial = 4,beta1_initial  = 3,beta2_initial = 4)
+
+chain4 <- gibbs.k(y = coal.miners$disasters,theta_initial = 10,lambda_initial = 50,R_initial = 0.2,beta1_initial  = 3,beta2_initial = 4)
+
+
+df.theta.chain <- data.frame(theta = c(c(5,chain1$theta_store), c(0,chain2$theta_store), c(20,chain3$theta_store), c(10,chain4$theta_store)),
+                             Iteration = c(0:(T+B),0:(T+B),0:(T+B),0:(T+B)),
+                             chain = c(rep("C1",B+T+1),rep("C2",B+T+1),rep("C3",B+T+1),rep("C4",B+T+1)))
+df.lambda.chain <- data.frame(lambda = c(c(1,chain1$lambda_store), c(10,chain2$lambda_store), c(5,chain3$lambda_store), c(50,chain4$lambda_store)),
+                             Iteration = c(0:(T+B),0:(T+B),0:(T+B),0:(T+B)),
+                             chain = c(rep("C1",B+T+1),rep("C2",B+T+1),rep("C3",B+T+1),rep("C4",B+T+1)))
+df.R.chain <- data.frame(R = c(c(5,chain1$R_store), c(0,chain2$R_store), c(4,chain3$R_store), c(0.2,chain4$R_store)),
+                             Iteration = c(0:(T+B),0:(T+B),0:(T+B),0:(T+B)),
+                             chain = c(rep("C1",B+T+1),rep("C2",B+T+1),rep("C3",B+T+1),rep("C4",B+T+1)))
+library(ggplot2)
+library(gridExtra)
+grid.arrange(ggplot(df.theta.chain,aes(x = Iteration,y = theta,color = chain)) + geom_line() + theme(legend.position="bottom",legend.title = element_text(size = 5), legend.text = element_text(size = 5)) ,
+             ggplot(df.lambda.chain,aes(x = Iteration,y = lambda,color = chain)) + geom_line() + theme(legend.position="bottom",legend.title = element_text(size = 5), legend.text = element_text(size = 5)) ,
+             ggplot(df.R.chain,aes(x = Iteration,y = R,color = chain)) + geom_line() + theme(legend.position="bottom",legend.title = element_text(size = 5), legend.text = element_text(size = 5)) ,
+             nrow = 1) 
+```
+
+```{r q2.2 gibbs sampler,fig.align='center',fig.width=7,fig.height=5}
+
+# sim settings
+set.seed(7330)
+T <- 10000
+B <- T/2
+
+# prior settings
+a1 <- 0.5
+a2 <- 0.5
+c1 <- 1
+c2 <- 1
+d1 <- 1
+d2 <- 1
+k <- 40
+
+# data settings
+y <- coal.miners$disasters
+n <- length(y)
+n1 <- k
+n2 <- n-k
+y1. <- sum(y[1:k])
+y2. <- sum(y[(k+1):n])
+
+
+# setting initial values
+theta_initial <- 3
+lambda_initial <- 1
+R_initial <- theta_initial/lambda_initial
+beta1_initial <- 1
+beta2_initial <- 1
+
+theta <- theta_initial
+lambda <- lambda_initial
+R <- R_initial
+beta1 <- beta1_initial
+beta2 <- beta2_initial
+
+# initializing storage
+theta_store <- rep(NA,T+B)
+lambda_store <- rep(NA,T+B)
+R_store <- rep(NA,T+B)
+beta1_store <- rep(NA,T+B)
+beta2_store <- rep(NA,T+B)
+
+
+
+# gibbs sampler 
+for(t in 1:(B+T)){
+  # draw theta
+  theta_shape <- a1 + y1.
+  theta_rate <- (k*beta1 + 1)/beta1
+  theta <- rgamma(1,shape = theta_shape,rate = theta_rate)
+  
+  # draw lambda
+  lambda_shape <- a2 + y2.
+  lambda_rate <- (n2*beta2 + 1)/beta2
+  lambda <- rgamma(1,shape = lambda_shape,rate = lambda_rate)
+  
+  # draw beta1
+  beta1_shape <- a1 + c1
+  beta1_rate <- (d1*theta + 1)/d1
+  beta1 <- 1/rgamma(1,shape = beta1_shape,rate = beta1_rate)
+  
+  # draw beta2
+  beta2_shape <- a2 + c2
+  beta2_rate <- (d2*lambda + 1)/d2
+  beta2 <- 1/rgamma(1,shape = beta2_shape,rate = beta2_rate)
+  
+  
+  
+  # store results
+  theta_store[t] <- theta
+  lambda_store[t] <- lambda
+  R_store[t] <- theta/lambda
+  beta1_store[t] <- beta1
+  beta2_store[t] <- beta2
+}
+```
+
+```{r q2.2 calc stats}
+# calc posterior summary statistics theta
+post.theta.meadian <- median(theta_store[(B+1):(B+T)])
+post.theta.mean <- mean(theta_store[(B+1):(B+T)])
+post.theta.sd <- sd(theta_store[(B+1):(B+T)])
+
+post.theta.min <- min(theta_store[(B+1):(B+T)])
+post.theta.max <- max(theta_store[(B+1):(B+T)])
+
+post.theta.lower.cl <- quantile(theta_store[(B+1):(B+T)],probs = 0.025)
+post.theta.upper.cl <- quantile(theta_store[(B+1):(B+T)],probs = 0.975)
+
+
+# calc posterior summary statistics lambda
+post.lambda.meadian <- median(lambda_store[(B+1):(B+T)])
+post.lambda.mean <- mean(lambda_store[(B+1):(B+T)])
+post.lambda.sd <- sd(lambda_store[(B+1):(B+T)])
+
+post.lambda.lower.cl <- quantile(lambda_store[(B+1):(B+T)],probs = 0.025)
+post.lambda.upper.cl <- quantile(lambda_store[(B+1):(B+T)],probs = 0.975)
+
+post.lambda.min <- min(lambda_store[(B+1):(B+T)])
+post.lambda.max <- max(lambda_store[(B+1):(B+T)])
+
+
+# calc posterior summary statistics R
+post.R.meadian <- median(R_store[(B+1):(B+T)])
+post.R.mean <- mean(R_store[(B+1):(B+T)])
+post.R.sd <- sd(R_store[(B+1):(B+T)])
+
+post.R.lower.cl <- quantile(R_store[(B+1):(B+T)],probs = 0.025)
+post.R.upper.cl <- quantile(R_store[(B+1):(B+T)],probs = 0.975)
+
+post.R.min <- min(R_store[(B+1):(B+T)])
+post.R.max <- max(R_store[(B+1):(B+T)])
+
+
+# calc posterior summary statistics beta1
+post.beta1.meadian <- median(beta1_store[(B+1):(B+T)])
+post.beta1.mean <- mean(beta1_store[(B+1):(B+T)])
+post.beta1.sd <- sd(beta1_store[(B+1):(B+T)])
+
+post.beta1.lower.cl <- quantile(beta1_store[(B+1):(B+T)],probs = 0.025)
+post.beta1.upper.cl <- quantile(beta1_store[(B+1):(B+T)],probs = 0.975)
+
+post.beta1.min <- min(beta1_store[(B+1):(B+T)])
+post.beta1.max <- max(beta1_store[(B+1):(B+T)])
+
+# calc posterior summary statistics beta2
+post.beta2.meadian <- median(beta2_store[(B+1):(B+T)])
+post.beta2.mean <- mean(beta2_store[(B+1):(B+T)])
+post.beta2.sd <- sd(beta2_store[(B+1):(B+T)])
+
+post.beta2.lower.cl <- quantile(beta2_store[(B+1):(B+T)],probs = 0.025)
+post.beta2.upper.cl <- quantile(beta2_store[(B+1):(B+T)],probs = 0.975)
+
+post.beta2.min <- min(beta2_store[(B+1):(B+T)])
+post.beta2.max <- max(beta2_store[(B+1):(B+T)])
+
+
+
+```
+
+```{r q2.2 trace,fig.align='center',fig.width=7,fig.height=6}
+# Monitor convergence
+par(mfrow = c(3,2))
+plot(cbind (c( theta_initial , theta_store ) , c( lambda_initial , lambda_store ) ) , type = "l", xlim = c(2, 5) , ylim = c(0, 2), 
+      xlab = expression ( theta ) , ylab = expression ( lambda ) , las = 1)
+plot(c( theta_initial , theta_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression ( theta ), las = 1)
+plot(c( lambda_initial , lambda_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( lambda ) , las = 1)
+
+plot(c( R_initial , R_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( R = theta/lambda ) , las = 1)
+
+plot(c( beta1_initial , beta1_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( beta1 ) , las = 1,ylim = c(0,1500))
+plot(c( beta2_initial , beta2_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( beta2 ) , las = 1,ylim = c(0,1500))
+```
+
+```{r q2.2 hist,fig.align='center',fig.width=7,fig.height=6}
+
+par(mfrow = c(3,2))
+# Visualize the joint and marginal posterior
+require(MASS)
+# contour
+z <- kde2d ( theta_store[(B+1):(B+T)] , lambda_store[(B+1):(B+T)])
+contour(z , xlim = c(2.5, 3.75) , ylim = c(0.5, 1.5) , las = 1, 
+        xlab = expression ( theta ) , ylab =expression ( lambda ) )
+# theta hist
+hist(theta_store[(B+1):(B+T)], freq = FALSE , xlab = expression( theta ), las = 1,
+     main = paste0(" Post.mean = ", round(post.theta.mean, 2), ", CI = [", round(post.theta.lower.cl ,2), ",",round(post.theta.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.theta.mean , col = 3)
+abline ( v = c(post.theta.lower.cl,post.theta.upper.cl) , col = 2, lty = 2)
+lines(density(theta_store[(B+1):(B+T)]))
+
+
+# lambda hist
+hist(lambda_store[(B+1):(B+T)], freq = FALSE, xlab = expression( lambda ), las = 1,   
+     main = paste0(" Post.mean = ", round(post.lambda.mean, 2), ", CI = [", round(post.lambda.lower.cl ,2), ",",round(post.lambda.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.lambda.mean , col = 3)
+abline ( v = c(post.lambda.lower.cl,post.lambda.upper.cl) , col = 2, lty = 2)
+lines(density(lambda_store[(B+1):(B+T)]))
+
+# R hist
+hist(R_store[(B+1):(B+T)], freq = FALSE, xlab = expression( R = theta/ lambda ), las = 1,   
+     main = paste0(" Post.mean = ", round(post.R.mean, 2), ", CI = [", round(post.R.lower.cl ,2), ",",round(post.R.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.R.mean , col = 3)
+abline ( v = c(post.R.lower.cl,post.R.upper.cl) , col = 2, lty = 2)
+lines(density(R_store[(B+1):(B+T)]))
+
+# beta1 hist
+hist(beta1_store[(B+1):(B+T)], freq = FALSE, xlab = "beta1", las = 1,   
+     main = paste0(" Post.mean = ", round(post.beta1.mean, 2), ", CI = [", round(post.beta1.lower.cl ,2), ",",round(post.beta1.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.beta1.mean , col = 3)
+abline ( v = c(post.beta1.lower.cl,post.beta1.upper.cl) , col = 2, lty = 2)
+lines(density(beta1_store[(B+1):(B+T)]))
+
+# beta2 hist
+hist(beta2_store[(B+1):(B+T)], freq = FALSE, xlab = "beta2", las = 1,   
+     main = paste0(" Post.mean = ", round(post.beta2.mean, 2), ", CI = [", round(post.beta2.lower.cl ,2), ",",round(post.beta2.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.beta2.mean , col = 3)
+abline ( v = c(post.beta2.lower.cl,post.beta2.upper.cl) , col = 2, lty = 2)
+lines(density(beta2_store[(B+1):(B+T)]))
+
+```
+
+```{r q2.2 acf,fig.align='center',fig.width=7,fig.height=6}
+
+par(mfrow = c(3,2))
+# acf plots
+
+acf(theta_store[(B+1):(B+T)])
+
+acf(lambda_store[(B+1):(B+T)])
+
+acf(R_store[(B+1):(B+T)])
+
+acf(beta1_store[(B+1):(B+T)])
+
+acf(beta2_store[(B+1):(B+T)])
+```
+
+```{r q2.2 summary stats}
+
+# summary table 
+post.theta.summary <- c(round(post.theta.min,5),round(post.theta.meadian,5),
+                        round(post.theta.mean,5),round(post.theta.sd,5),
+                        paste("(",round(post.theta.lower.cl,5),",",
+                              round(post.theta.upper.cl,5),")"), 
+                        round(post.theta.max,5))
+post.lambda.summary <- c(round(post.lambda.min,5),round(post.lambda.meadian,5),
+                         round(post.lambda.mean,5), round(post.lambda.sd,5),
+                         paste("(",round(post.lambda.lower.cl,5),",",
+                               round(post.lambda.upper.cl,5),")"),
+                         round(post.lambda.max,5))
+post.R.summary <- c(round(post.R.min,5),round(post.R.meadian,5),round(post.R.mean,5), round(post.R.sd,5),
+                    paste("(",round(post.R.lower.cl,5),",",round(post.R.upper.cl,5),")"),
+                    round(post.R.max,5))
+post.beta1.summary <- c(round(post.beta1.min,5),round(post.beta1.meadian,5),round(post.beta1.mean,5),round(post.beta1.sd,5),
+                    paste("(",round(post.beta1.lower.cl,5),",",round(post.beta1.upper.cl,5),")"),
+                    round(post.beta1.max,5))
+post.beta2.summary <- c(round(post.beta2.min,5),round(post.beta2.meadian,5),round(post.beta2.mean,5),round(post.beta2.sd,5),
+                    paste("(",round(post.beta2.lower.cl,5),",",round(post.beta2.upper.cl,5),")"),
+                    round(post.beta2.max,5))
+
+table.q22 <- as.data.frame(rbind(post.theta.summary,post.lambda.summary,post.R.summary,post.beta1.summary,post.beta2.summary))
+row.names(table.q22) <- c("theta","lambda","R","beta1","beta2")#paste("$",c("\\theta","\\lambda","R"),"$",sep = "")
+  #c("$\\theta$","$\\lambda$","$R = \\theta/\\lambda$")
+ 
+library(kableExtra)
+knitr::kable(table.q22,booktabs = T,format = "pandoc",col.names = c("Posterior Min","Posterior Median","Posterior Mean","Posterior sd", "95% Credible interval","Posterior Max"),caption = "Posterior Summary Statistics of $\\theta,\\lambda,R = \\theta / \\lambda$, $\\beta_1$, $\\beta_2$", align = "cccccc") %>% 
+  kable_styling(latex_options = c("hold_position","scale_down"))
+```
+
+\newpage
+
+## Question 2.3 (10 points)
+
+Now assume that k is unknown and adopt the following prior:
+
+```{=tex}
+\begin{align*}
+k &\sim \text{Discrete-Unif}(1,n),\\
+\end{align*}
+```
+which should be independent of $\theta$ and $\lambda$. Now add $k$ into the sampling chain, and obtain the marginal posterior density estimate for it. What is the effect on the posterior for $R = \theta/\lambda$?
+
+```{=tex}
+\begin{align*}
+\pi(\theta|a_1,\beta_1) &= \frac{1}{\beta_1^{a_1}\Gamma(a_1)}\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \\
+\pi(\lambda|a_2,\beta_2) &= \frac{1}{\beta_2^{a_2}\Gamma(a_2)}\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg) \\
+\pi(\beta_1|c_1,d_1) &= \frac{1}{d_1^{c_1}\Gamma(c_1)}\bigg(\frac{1}{\beta_1}\bigg)^{c_1 + 1}\text{exp}\bigg(-\frac{1}{d_1 \beta_1}\bigg) \\
+\pi(\beta_2|c_2,d_2) &= \frac{1}{d_2^{c_2}\Gamma(c_2)}\bigg(\frac{1}{\beta_2}\bigg)^{c_2 + 1}\text{exp}\bigg(-\frac{1}{d_2 \beta_2}\bigg) \\
+\pi(k|n) &= \frac{1}{n} \\
+f(y_1,\dots,y_n|\theta,\lambda,k) &= \prod_{i = 1}^k \frac{\theta^{y_i}\text{exp}(-\theta)}{y_i!}\prod_{i = k+1}^n \frac{\lambda^{y_i}\text{exp}(-\lambda)}{y_i!} = \frac{1}{\prod_{i = 1}^n y_i!}\theta^{\sum_{i = 1}^k y_i}\text{exp}(-k\theta) \lambda^{\sum_{i = k+1}^n y_i}\text{exp}(-(n-k)\lambda)\\
+\pi(k|y_1,\dots,y_n,\theta,\lambda) &\propto f(y_1,\dots,y_n|\theta,\lambda,k) \pi(k|n) \\
+&\propto \frac{1}{n} \frac{1}{\prod_{i = 1}^n y_i!}\theta^{\sum_{i = 1}^k y_i}\text{exp}(-k\theta) \lambda^{\sum_{i = k+1}^n y_i}\text{exp}(-(n-k)\lambda) \\
+&\propto \theta^{\sum_{i = 1}^k y_i}\text{exp}(-k\theta) \lambda^{\sum_{i = k+1}^n y_i}\text{exp}(k\lambda)\\ 
+\\
+p(\beta_1|\theta) & = \pi(\theta|a_1,\beta_1)\pi(\beta_1|c_1,d_1)    \propto \theta^{a_1 - 1} IG\bigg(\beta_1;a_1 + c_1, \bigg(\frac{d_1\theta + 1}{d_1}\bigg)\bigg)\\
+\int p(\beta_1|\theta) d \beta_1 &\propto  \theta^{a_1 - 1} \int IG\bigg(\beta_1;a_1 + c_1, \bigg(\frac{d_1\theta + 1}{d_1}\bigg)\bigg) d \beta_1 = \theta^{a_1 - 1} \\
+p(\beta_2 | \lambda) & = \pi(\lambda|a_2,\beta_2) \pi(\beta_2|c_2,d_2) \propto \lambda^{a_2 - 1} IG\bigg(\beta_2; a_2 + c_2,\bigg(\frac{d_2\lambda+1}{d_2}\bigg)\bigg) \\
+\int p(\beta_2 | \lambda) d \beta_2 & \propto \lambda^{a_2 - 1} \int IG\bigg(\beta_2; a_2 + c_2,\bigg(\frac{d_2\lambda+1}{d_2}\bigg)\bigg) d \beta_2  = \lambda^{a_2 - 1}\\ 
+\\
+\pi(k|y_1,\dots,y_n) &\propto \int \pi(k,\theta,\lambda,\beta_1,\beta_2|y_1,\dots,y_n) d\theta d\lambda d\beta_1 d\beta_2  \\
+&= \int f(y_1,\dots,y_n|\theta,\lambda) \pi(\theta|a_1,\beta_1) \pi(\lambda|a_2,\beta_2) \pi(\beta_1|c_1,d_1) \pi(\beta_2|c_2,d_2) \pi(k|n) d\theta d\lambda d\beta_1 d\beta_2  \\
+&\propto   \int \frac{1}{n} \frac{\theta^{\sum_{i = 1}^k y_i}\text{exp}(-k\theta)}{\prod_{i = 1}^k y_i!} \frac{\lambda^{\sum_{i = k+1}^n y_i}\text{exp}(-(n-k)\lambda)}{\prod_{i = k+1}^n y_i!} \theta^{a_1 - 1} \lambda^{a_2 - 1} d \theta d \lambda \\
+&=   \frac{1}{n\prod_{i = 1}^n y_i!} \int \theta^{a_1 + \sum_{i = 1}^k y_i - 1}\text{exp}(-k\theta) d \theta \int \lambda^{a_2 + \sum_{i = k+1}^n y_i - 1}\text{exp}(-(n-k)\lambda) d \lambda \\
+&=   \frac{1}{n\prod_{i = 1}^n y_i!} \frac{\Gamma(a_1 + \sum_{i = 1}^k y_i)} {k^{a_1 + \sum_{i = 1}^k y_i}} \frac{\Gamma(a_2 + \sum_{i = k+1}^n y_i)}{(n-k)^{a_2 + \sum_{i = k+1}^n y_i}}\\
+\end{align*}
+```
+I could not find a common distribution for this marginal distribution of k.\
+To implement this prior on k I implemented a metropolis hastings step to draw k. I used the discrete uniform distribution as the proposal distribution. The acceptance rate is not the best around 5%, but it seems to work well.
+
+I did not notice too much difference in the distribution/histograms of R after introduction k as unknown. The posterior summaries also do not change by any very noticeable difference, so the introduction as k as an unknown parameter did not effect the posterior of R very much. (Table 2 and Table 3)
+
+```{r q2.3 k ,fig.align='center',fig.width=7,fig.height=6}
+# sim settings
+set.seed(7330)
+T <- 10000
+B <- T/2
+
+# prior settings
+a1 <- 0.5
+a2 <- 0.5
+c1 <- 1
+c2 <- 1
+d1 <- 1
+d2 <- 1
+
+# data settings
+y <- coal.miners$disasters
+n <- length(y)
+
+
+# setting initial values
+theta_initial <- 3
+lambda_initial <- 1
+R_initial <- theta_initial/lambda_initial
+beta1_initial <- 1
+beta2_initial <- 1
+k_initial <- n
+acceptk <- 0
+
+theta <- theta_initial
+lambda <- lambda_initial
+R <- R_initial
+beta1 <- beta1_initial
+beta2 <- beta2_initial
+k <- k_initial
+
+# initializing storage
+theta_store <- rep(NA,T+B)
+lambda_store <- rep(NA,T+B)
+R_store <- rep(NA,T+B)
+beta1_store <- rep(NA,T+B)
+beta2_store <- rep(NA,T+B)
+k_store <- rep(NA,T+B)
+
+klike <- function(y,k,theta,lambda) {
+  # special cases of k
+  if(k == length(y)) {
+    return(theta^(sum(y[1:k])) * exp(-k*theta) )
+  }
+  else if(k == 1) {
+    return( lambda^(sum(y[(k):n])) * exp(k*lambda) )
+  }
+  else {
+    return(theta^(sum(y[1:k])) * exp(-k*theta) * lambda^(sum(y[(k+1):n])) * exp(k*lambda) )
+  }
+}
+
+# gibbs sampler 
+for(t in 1:(B+T)){
+  # special cases for k
+  if(k == n) {
+    n1 <- k
+    n2 <- 0
+    y1. <- sum(y[1:k])
+    y2. <- 0
+  }
+  else if (k == 1) {
+    n1 <- 0
+    n2 <- n
+    y1. <- 0
+    y2. <- sum(y[1:n])
+  }
+  else {
+    n1 <- k
+    n2 <- n-k
+    y1. <- sum(y[1:k])
+    y2. <- sum(y[(k+1):n])
+  }
+  
+
+  # draw theta
+  theta_shape <- a1 + y1.
+  theta_rate <- (k*beta1 + 1)/beta1
+  theta <- rgamma(1,shape = theta_shape,rate = theta_rate)
+  
+  # draw lambda
+  lambda_shape <- a2 + y2.
+  lambda_rate <- (n2*beta2 + 1)/beta2
+  lambda <- rgamma(1,shape = lambda_shape,rate = lambda_rate)
+  
+  # draw beta1
+  beta1_shape <- a1 + c1
+  beta1_rate <- (d1*theta + 1)/d1
+  beta1 <- 1/rgamma(1,shape = beta1_shape,rate = beta1_rate)
+  
+  # draw beta2
+  beta2_shape <- a2 + c2
+  beta2_rate <- (d2*lambda + 1)/d2
+  beta2 <- 1/rgamma(1,shape = beta2_shape,rate = beta2_rate)
+  
+  # draw k by mH
+  # proposal dist is discrete uniform
+  k_star <- sample(1:n,1,replace = T)
+  rk <- klike(y,k_star,theta,lambda) / klike(y,k,theta,lambda)
+  
+  u <- runif(1)
+  
+  if(rk >= u) {
+    k <- k_star
+    acceptk <- acceptk+1
+  }
+  
+  
+  # store results
+  theta_store[t] <- theta
+  lambda_store[t] <- lambda
+  R_store[t] <- theta/lambda
+  beta1_store[t] <- beta1
+  beta2_store[t] <- beta2
+  k_store[t] <- k
+}
+
+```
+
+```{r q2.3 k calc stats}
+# calc posterior summary statistics theta
+post.theta.meadian <- median(theta_store[(B+1):(B+T)])
+post.theta.mean <- mean(theta_store[(B+1):(B+T)])
+post.theta.sd <- sd(theta_store[(B+1):(B+T)])
+
+post.theta.min <- min(theta_store[(B+1):(B+T)])
+post.theta.max <- max(theta_store[(B+1):(B+T)])
+
+post.theta.lower.cl <- quantile(theta_store[(B+1):(B+T)],probs = 0.025)
+post.theta.upper.cl <- quantile(theta_store[(B+1):(B+T)],probs = 0.975)
+
+
+# calc posterior summary statistics lambda
+post.lambda.meadian <- median(lambda_store[(B+1):(B+T)])
+post.lambda.mean <- mean(lambda_store[(B+1):(B+T)])
+post.lambda.sd <- sd(lambda_store[(B+1):(B+T)])
+
+post.lambda.lower.cl <- quantile(lambda_store[(B+1):(B+T)],probs = 0.025)
+post.lambda.upper.cl <- quantile(lambda_store[(B+1):(B+T)],probs = 0.975)
+
+post.lambda.min <- min(lambda_store[(B+1):(B+T)])
+post.lambda.max <- max(lambda_store[(B+1):(B+T)])
+
+
+# calc posterior summary statistics R
+post.R.meadian <- median(R_store[(B+1):(B+T)])
+post.R.mean <- mean(R_store[(B+1):(B+T)])
+post.R.sd <- sd(R_store[(B+1):(B+T)])
+
+post.R.lower.cl <- quantile(R_store[(B+1):(B+T)],probs = 0.025)
+post.R.upper.cl <- quantile(R_store[(B+1):(B+T)],probs = 0.975)
+
+post.R.min <- min(R_store[(B+1):(B+T)])
+post.R.max <- max(R_store[(B+1):(B+T)])
+
+# calc posterior summary statistics k
+post.k.meadian <- median(k_store[(B+1):(B+T)])
+post.k.mean <- mean(k_store[(B+1):(B+T)])
+post.k.sd <- sd(k_store[(B+1):(B+T)])
+
+post.k.lower.cl <- quantile(k_store[(B+1):(B+T)],probs = 0.025)
+post.k.upper.cl <- quantile(k_store[(B+1):(B+T)],probs = 0.975)
+
+post.k.min <- min(k_store[(B+1):(B+T)])
+post.k.max <- max(k_store[(B+1):(B+T)])
+
+# calc posterior summary statistics beta1
+post.beta1.meadian <- median(beta1_store[(B+1):(B+T)])
+post.beta1.mean <- mean(beta1_store[(B+1):(B+T)])
+post.beta1.sd <- sd(beta1_store[(B+1):(B+T)])
+
+post.beta1.lower.cl <- quantile(beta1_store[(B+1):(B+T)],probs = 0.025)
+post.beta1.upper.cl <- quantile(beta1_store[(B+1):(B+T)],probs = 0.975)
+
+post.beta1.min <- min(beta1_store[(B+1):(B+T)])
+post.beta1.max <- max(beta1_store[(B+1):(B+T)])
+
+# calc posterior summary statistics beta2
+post.beta2.meadian <- median(beta2_store[(B+1):(B+T)])
+post.beta2.mean <- mean(beta2_store[(B+1):(B+T)])
+post.beta2.sd <- sd(beta2_store[(B+1):(B+T)])
+
+post.beta2.lower.cl <- quantile(beta2_store[(B+1):(B+T)],probs = 0.025)
+post.beta2.upper.cl <- quantile(beta2_store[(B+1):(B+T)],probs = 0.975)
+
+post.beta2.min <- min(beta2_store[(B+1):(B+T)])
+post.beta2.max <- max(beta2_store[(B+1):(B+T)])
+
+
+
+```
+
+```{r q2.3 k trace,fig.align='center',fig.width=7,fig.height=8}
+# Monitor convergence
+par(mfrow = c(4,2))
+plot(cbind (c( theta_initial , theta_store ) , c( lambda_initial , lambda_store ) ) , type = "l", xlim = c(2, 5) , ylim = c(0, 2), 
+      xlab = expression ( theta ) , ylab = expression ( lambda ) , las = 1)
+plot(c( theta_initial , theta_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression ( theta ), las = 1)
+plot(c( lambda_initial , lambda_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( lambda ) , las = 1)
+
+plot(c( R_initial , R_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( R = theta/lambda ) , las = 1)
+plot(c( k_initial , k_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( k ) , las = 1)
+plot(c( beta1_initial , beta1_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( beta1 ) , las = 1,ylim = c(0,1500))
+plot(c( beta2_initial , beta2_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( beta2 ) , las = 1,ylim = c(0,1500))
+```
+
+```{r q2.3 k hist,fig.align='center',fig.width=7,fig.height=8}
+
+par(mfrow = c(4,2))
+# Visualize the joint and marginal posterior
+require(MASS)
+# contour
+z <- kde2d ( theta_store[(B+1):(B+T)] , lambda_store[(B+1):(B+T)])
+contour(z , xlim = c(2.5, 3.75) , ylim = c(0.5, 1.5) , las = 1, 
+        xlab = expression ( theta ) , ylab =expression ( lambda ) )
+# theta hist
+hist(theta_store[(B+1):(B+T)], freq = FALSE , xlab = expression( theta ), las = 1,
+     main = paste0(" Post.mean = ", round(post.theta.mean, 2), ", CI = [", round(post.theta.lower.cl ,2), ",",round(post.theta.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.theta.mean , col = 3)
+abline ( v = c(post.theta.lower.cl,post.theta.upper.cl) , col = 2, lty = 2)
+lines(density(theta_store[(B+1):(B+T)]))
+
+
+# lambda hist
+hist(lambda_store[(B+1):(B+T)], freq = FALSE, xlab = expression( lambda ), las = 1,   
+     main = paste0(" Post.mean = ", round(post.lambda.mean, 2), ", CI = [", round(post.lambda.lower.cl ,2), ",",round(post.lambda.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.lambda.mean , col = 3)
+abline ( v = c(post.lambda.lower.cl,post.lambda.upper.cl) , col = 2, lty = 2)
+lines(density(lambda_store[(B+1):(B+T)]))
+
+# R hist
+hist(R_store[(B+1):(B+T)], freq = FALSE, xlab = expression( R = theta/ lambda ), las = 1,   
+     main = paste0(" Post.mean = ", round(post.R.mean, 2), ", CI = [", round(post.R.lower.cl ,2), ",",round(post.R.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.R.mean , col = 3)
+abline ( v = c(post.R.lower.cl,post.R.upper.cl) , col = 2, lty = 2)
+lines(density(R_store[(B+1):(B+T)]))
+
+# k hist
+hist(k_store[(B+1):(B+T)], freq = FALSE, xlab = "k", las = 1,   
+     main = paste0(" Post.mean = ", round(post.k.mean, 2), ", CI = [", round(post.k.lower.cl ,2), ",",round(post.k.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.k.mean , col = 3)
+abline ( v = c(post.k.lower.cl,post.k.upper.cl) , col = 2, lty = 2)
+lines(density(k_store[(B+1):(B+T)]))
+
+# beta1 hist
+hist(beta1_store[(B+1):(B+T)], freq = FALSE, xlab = "beta1", las = 1,   
+     main = paste0(" Post.mean = ", round(post.beta1.mean, 2), ", CI = [", round(post.beta1.lower.cl ,2), ",",round(post.beta1.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.beta1.mean , col = 3)
+abline ( v = c(post.beta1.lower.cl,post.beta1.upper.cl) , col = 2, lty = 2)
+lines(density(beta1_store[(B+1):(B+T)]))
+
+# beta2 hist
+hist(beta2_store[(B+1):(B+T)], freq = FALSE, xlab = "beta2", las = 1,   
+     main = paste0(" Post.mean = ", round(post.beta2.mean, 2), ", CI = [", round(post.beta2.lower.cl ,2), ",",round(post.beta2.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.beta2.mean , col = 3)
+abline ( v = c(post.beta2.lower.cl,post.beta2.upper.cl) , col = 2, lty = 2)
+lines(density(beta2_store[(B+1):(B+T)]))
+
+```
+
+```{r q2.3 k summary stats}
+
+# summary table 
+post.theta.summary <- c(round(post.theta.min,5),round(post.theta.meadian,5),
+                        round(post.theta.mean,5),round(post.theta.sd,5),
+                        paste("(",round(post.theta.lower.cl,5),",",
+                              round(post.theta.upper.cl,5),")"), 
+                        round(post.theta.max,5))
+post.lambda.summary <- c(round(post.lambda.min,5),round(post.lambda.meadian,5),
+                         round(post.lambda.mean,5), round(post.lambda.sd,5),
+                         paste("(",round(post.lambda.lower.cl,5),",",
+                               round(post.lambda.upper.cl,5),")"),
+                         round(post.lambda.max,5))
+post.R.summary <- c(round(post.R.min,5),round(post.R.meadian,5),round(post.R.mean,5), round(post.R.sd,5),
+                    paste("(",round(post.R.lower.cl,5),",",round(post.R.upper.cl,5),")"),
+                    round(post.R.max,5))
+post.k.summary <- c(round(post.k.min,5),round(post.k.meadian,5),round(post.k.mean,5),round(post.k.sd,5),
+                    paste("(",round(post.k.lower.cl,5),",",round(post.k.upper.cl,5),")"),
+                    round(post.k.max,5))
+post.beta1.summary <- c(round(post.beta1.min,5),round(post.beta1.meadian,5),round(post.beta1.mean,5),round(post.beta1.sd,5),
+                    paste("(",round(post.beta1.lower.cl,5),",",round(post.beta1.upper.cl,5),")"),
+                    round(post.beta1.max,5))
+post.beta2.summary <- c(round(post.beta2.min,5),round(post.beta2.meadian,5),round(post.beta2.mean,5),round(post.beta2.sd,5),
+                    paste("(",round(post.beta2.lower.cl,5),",",round(post.beta2.upper.cl,5),")"),
+                    round(post.beta2.max,5))
+
+table.q22 <- as.data.frame(rbind(post.theta.summary,post.lambda.summary,post.R.summary,post.k.summary,post.beta1.summary,post.beta2.summary))
+row.names(table.q22) <- c("theta","lambda","R","k","beta1","beta2")#paste("$",c("\\theta","\\lambda","R"),"$",sep = "")
+  #c("$\\theta$","$\\lambda$","$R = \\theta/\\lambda$")
+ 
+library(kableExtra)
+knitr::kable(table.q22,booktabs = T,format = "pandoc",col.names = c("Posterior Min","Posterior Median","Posterior Mean","Posterior sd", "95% Credible interval","Posterior Max"),caption = "Posterior Summary Statistics of $\\theta,\\lambda,R = \\theta / \\lambda$, k, $\\beta_1$, $\\beta_2$", align = "cccccc") %>% 
+  kable_styling(latex_options = c("hold_position","scale_down"))
+```
+
+
+\newpage
+## Question 2.4 (10 points)
+
+Now replace the third-stage priors given above with, $\beta_1 \sim Ga(c_1,d_1)$ and $\beta_2 \sim Ga(c_2,d_2)$ with $\beta_1$ and $\beta_2$ being independent, thus destroying the conjugacy for these two conditionals. Resort to a Metropolis Hastings subsampling for these two components instead, using the following hyperparameter values $c_1 = c_2 = 1$ and $d_1 = d_2 = 100$. What is the effect on the posterior distribution for $\beta_1$ and $\beta_2$. For $R = \theta/\lambda$? For $k$?
+
+```{=tex}
+\begin{align*}
+\pi(\theta|a_1,\beta_1) &= \frac{1}{\beta_1^{a_1}\Gamma(a_1)}\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \\
+\pi(\lambda|a_2,\beta_2) &= \frac{1}{\beta_2^{a_2}\Gamma(a_2)}\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg) \\
+\pi(\beta_1|c_1,d_1) &= \frac{1}{d_1^{c_1}\Gamma(c_1)}\beta_1^{c_1 - 1}\text{exp}\bigg(-\frac{\beta_1}{d_1}\bigg) \\
+\pi(\beta_2|c_2,d_2) &= \frac{1}{d_2^{c_2}\Gamma(c_2)}\beta_2^{c_2 - 1}\text{exp}\bigg(-\frac{\beta_2}{d_2}\bigg) \\
+\pi(k|n) &= \frac{1}{n} \\
+f(y_1,\dots,y_n|\theta,\lambda,k) &= \prod_{i = 1}^k \frac{\theta^{y_i}\text{exp}(-\theta)}{y_i!}\prod_{i = k+1}^n \frac{\lambda^{y_i}\text{exp}(-\lambda)}{y_i!}\\
+\\
+\pi(\beta_1|\theta) &\propto \pi(\theta|a_1,\beta_1) \pi(\beta_1|c_1,d_1) \\
+&=  \frac{1}{\beta_1^{a_1}\Gamma(a_1)}\theta^{a_1 - 1}\text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \frac{1}{d_1^{c_1}\Gamma(c_1)}\beta_1^{c_1 - 1}\text{exp}\bigg(-\frac{\beta_1}{d_1}\bigg)\\
+&\propto \frac{1}{\beta_1^{a_1}} \text{exp}\bigg(-\frac{\theta}{\beta_1}\bigg) \beta_1^{c_1 - 1}\text{exp}\bigg(-\frac{\beta_1}{d_1}\bigg) \\  
+&= \beta_1^{c_1 - a_1 - 1} \text{exp}\bigg(-\frac{\theta}{\beta_1}-\frac{\beta_1}{d_1}\bigg) \\  
+\\
+\pi(\beta_2|\lambda) &\propto \pi(\lambda|a_2,\beta_2) \pi(\beta_2|c_2,d_2) \\
+&= \frac{1}{\beta_2^{a_2}\Gamma(a_2)}\lambda^{a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg)\frac{1}{d_2^{c_2}\Gamma(c_2)}\beta_2^{c_2 - 1}\text{exp}\bigg(-\frac{\beta_2}{d_2}\bigg) \\
+&\propto \beta_2^{-a_2}\text{exp}\bigg(-\frac{\lambda}{\beta_2}\bigg) \beta_2^{c_2 - 1}\text{exp}\bigg(-\frac{\beta_2}{d_2}\bigg)\\
+&= \beta_2^{c_2 - a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}-\frac{\beta_2}{d_2}\bigg)\\
+\\
+\pi(\beta_1,\beta_2|\theta,\lambda) &\propto \beta_1^{c_1 - a_1 - 1} \text{exp}\bigg(-\frac{\theta}{\beta_1}-\frac{\beta_1}{d_1}\bigg) \beta_2^{c_2 - a_2 - 1}\text{exp}\bigg(-\frac{\lambda}{\beta_2}-\frac{\beta_2}{d_2}\bigg)\\
+&= \beta_1^{c_1 - a_1 - 1}\beta_2^{c_2 - a_2 - 1} \text{exp}\bigg(-\frac{\theta}{\beta_1}-\frac{\beta_1}{d_1}-\frac{\lambda}{\beta_2}-\frac{\beta_2}{d_2}\bigg)\\
+%log(\pi(\beta_1,\beta_2|\theta,\lambda)) &\propto  (c_1 - a_1 - 1)log(\beta_1) + (c_2 - a_2 - 1)log(\beta_2) -\frac{\theta}{\beta_1}-\frac{\beta_1}{d_1}-\frac{\lambda}{\beta_2}-\frac{\beta_2}{d_2}\\
+\text{proposal dist: }&\\
+J( (\beta_1^{*},
+\beta_2^{*}) | (\beta_1^{(t-1)},\beta_2^{(t-1)})) &\sim 
+MN \bigg(((\beta_1^{*},
+\beta_2^{*})); (\beta_1^{(t-1)},\beta_2^{(t-1)}),\bigg( \begin{matrix} \psi_{\beta_1}^2 & 0 \\ 0 & \psi_{\beta_2}^2   \end{matrix} \bigg)\bigg)\\
+\end{align*}
+```
+The posterior distributions of $\beta_1$ and $\beta_2$ are both much narrower that in the previous sampling setting, and noticeably lower parameter estimates. One thing to note is that to me it looks like both $\beta_1$ and $\beta_2$ are not converging, so this may impact any inferences done on these two parameters. I tried different proposal distributions and different sampling settings, but could not achieve any noticeable convergence. This may indicate that I have derived my posterior incorrectly, but I could not figure out where the issue is. The histograms are more bell shaped than before using the inverse gamma prior.
+
+For the effect on $R =\theta/\lambda$ the coverage is slightly narrower, but other than that there is not too much change from table 3 to table 4 and the histograms. This may be a part of the convergence issue of $\beta_1$ and $\beta_2$ or this may indicate that the prior choice of $\beta_1$ and $\beta_2$ has minimal change in the posterior estimates of R.
+
+For the effect on k the range is slightly larger, but the median and coverage does not change. There is a slightly lower posterior mean for k. Overall, there seems to be little effect on the posterior of k using that improper prior Gamma for $\beta_1$ and $\beta_2$ again there may be some issues because of the convergence problem of $\beta_1$ and $\beta_2$.
+
+```{r q2.4 mh beta1 and beta2}
+# sim settings
+set.seed(7330)
+T <- 10000
+B <- T/2
+
+# prior settings
+a1 <- 0.5
+a2 <- 0.5
+c1 <- 1
+c2 <- 1
+d1 <- 100
+d2 <- 100
+psi_beta1 <- 0.1
+psi_beta2 <- 0.1
+
+# data settings
+y <- coal.miners$disasters
+n <- length(y)
+
+
+# setting initial values
+theta_initial <- 3
+lambda_initial <- 1
+R_initial <- theta_initial/lambda_initial
+beta1_initial <- 1
+beta2_initial <- 1
+k_initial <- n
+acceptk <- 0
+acceptbeta <- 0
+
+theta <- theta_initial
+lambda <- lambda_initial
+R <- R_initial
+beta1 <- beta1_initial
+beta2 <- beta2_initial
+k <- k_initial
+
+# initializing storage
+theta_store <- rep(NA,T+B)
+lambda_store <- rep(NA,T+B)
+R_store <- rep(NA,T+B)
+beta1_store <- rep(NA,T+B)
+beta2_store <- rep(NA,T+B)
+k_store <- rep(NA,T+B)
+r_store <-rep(NA,T+B)
+rk_store <-rep(NA,T+B)
+
+klike <- function(y,k,theta,lambda) {
+  # special cases of k
+  if(k == length(y)) {
+    return(theta^(sum(y[1:k])) * exp(-k*theta) )
+  }
+  else if(k == 1) {
+    return( lambda^(sum(y[(k):n])) * exp(k*lambda) )
+  }
+  else {
+    return(theta^(sum(y[1:k])) * exp(-k*theta) * lambda^(sum(y[(k+1):n])) * exp(k*lambda) )
+  }
+}
+
+# logpost for MH for beta 1 and 2
+post <- function(beta1,beta2,theta,lambda,a1,a2,c1,c2,d1,d2) {
+  return( beta1^(c1 - a1 - 1)*beta2^(c2 - a2 - 1)*exp(- theta/beta1 - beta1/d1 - lambda/beta2 - beta2/d2))
+}
+
+
+# gibbs sampler 
+for(t in 1:(B+T)){
+ # for( i in 1:1){
+  # special cases for k
+  if(k == n) {
+    n1 <- k
+    n2 <- 0
+    y1. <- sum(y[1:k])
+    y2. <- 0
+  }
+  else if (k == 1) {
+    n1 <- 0
+    n2 <- n
+    y1. <- 0
+    y2. <- sum(y[1:n])
+  }
+  else {
+    n1 <- k
+    n2 <- n-k
+    y1. <- sum(y[1:k])
+    y2. <- sum(y[(k+1):n])
+  }
+  
+
+  # draw theta
+  theta_shape <- a1 + y1.
+  theta_rate <- (k*beta1 + 1)/beta1
+  theta <- rgamma(1,shape = theta_shape,rate = theta_rate)
+  
+  # draw lambda
+  lambda_shape <- a2 + y2.
+  lambda_rate <- (n2*beta2 + 1)/beta2
+  lambda <- rgamma(1,shape = lambda_shape,rate = lambda_rate)
+  
+ 
+  # metropolis- hastings beta1 and beta2
+  beta1_star <- rnorm(1,mean = beta1,sd = psi_beta1)
+  beta2_star <- rnorm(1,mean = beta2,sd = psi_beta2)
+  r <- post(beta1_star,beta2_star,theta,lambda,a1,a2,c1,c2,d1,d2) / post(beta1,beta2,theta,lambda,a1,a2,c1,c2,d1,d2)
+  
+  u1 <- runif(1, min = 0,max = 1)
+  
+  if(r >= u1) {
+    beta1 <- beta1_star
+    beta2 <- beta2_star
+    acceptbeta <- acceptbeta + 1
+  }
+  
+
+  
+  # draw k by mH
+  # proposal dist is discrete uniform
+  k_star <- sample(1:n,1,replace = T)
+  rk <- klike(y,k_star,theta,lambda) / klike(y,k,theta,lambda)
+  rk_store[t] <- rk
+  u2 <- runif(1)
+  
+  if(rk >= u2) {
+    k <- k_star
+    acceptk <- acceptk+1
+  }
+ # }
+  
+  # store results
+  theta_store[t] <- theta
+  lambda_store[t] <- lambda
+  R_store[t] <- theta/lambda
+  beta1_store[t] <- beta1
+  beta2_store[t] <- beta2
+  k_store[t] <- k
+}
+```
+
+```{r q2.4 beta12 calc stats}
+# calc posterior summary statistics theta
+post.theta.meadian <- median(theta_store[(B+1):(B+T)])
+post.theta.mean <- mean(theta_store[(B+1):(B+T)])
+post.theta.sd <- sd(theta_store[(B+1):(B+T)])
+
+post.theta.min <- min(theta_store[(B+1):(B+T)])
+post.theta.max <- max(theta_store[(B+1):(B+T)])
+
+post.theta.lower.cl <- quantile(theta_store[(B+1):(B+T)],probs = 0.025)
+post.theta.upper.cl <- quantile(theta_store[(B+1):(B+T)],probs = 0.975)
+
+
+# calc posterior summary statistics lambda
+post.lambda.meadian <- median(lambda_store[(B+1):(B+T)])
+post.lambda.mean <- mean(lambda_store[(B+1):(B+T)])
+post.lambda.sd <- sd(lambda_store[(B+1):(B+T)])
+
+post.lambda.lower.cl <- quantile(lambda_store[(B+1):(B+T)],probs = 0.025)
+post.lambda.upper.cl <- quantile(lambda_store[(B+1):(B+T)],probs = 0.975)
+
+post.lambda.min <- min(lambda_store[(B+1):(B+T)])
+post.lambda.max <- max(lambda_store[(B+1):(B+T)])
+
+
+# calc posterior summary statistics R
+post.R.meadian <- median(R_store[(B+1):(B+T)])
+post.R.mean <- mean(R_store[(B+1):(B+T)])
+post.R.sd <- sd(R_store[(B+1):(B+T)])
+
+post.R.lower.cl <- quantile(R_store[(B+1):(B+T)],probs = 0.025)
+post.R.upper.cl <- quantile(R_store[(B+1):(B+T)],probs = 0.975)
+
+post.R.min <- min(R_store[(B+1):(B+T)])
+post.R.max <- max(R_store[(B+1):(B+T)])
+
+# calc posterior summary statistics k
+post.k.meadian <- median(k_store[(B+1):(B+T)])
+post.k.mean <- mean(k_store[(B+1):(B+T)])
+post.k.sd <- sd(k_store[(B+1):(B+T)])
+
+post.k.lower.cl <- quantile(k_store[(B+1):(B+T)],probs = 0.025)
+post.k.upper.cl <- quantile(k_store[(B+1):(B+T)],probs = 0.975)
+
+post.k.min <- min(k_store[(B+1):(B+T)])
+post.k.max <- max(k_store[(B+1):(B+T)])
+
+# calc posterior summary statistics beta1
+post.beta1.meadian <- median(beta1_store[(B+1):(B+T)])
+post.beta1.mean <- mean(beta1_store[(B+1):(B+T)])
+post.beta1.sd <- sd(beta1_store[(B+1):(B+T)])
+
+post.beta1.lower.cl <- quantile(beta1_store[(B+1):(B+T)],probs = 0.025)
+post.beta1.upper.cl <- quantile(beta1_store[(B+1):(B+T)],probs = 0.975)
+
+post.beta1.min <- min(beta1_store[(B+1):(B+T)])
+post.beta1.max <- max(beta1_store[(B+1):(B+T)])
+
+# calc posterior summary statistics beta2
+post.beta2.meadian <- median(beta2_store[(B+1):(B+T)])
+post.beta2.mean <- mean(beta2_store[(B+1):(B+T)])
+post.beta2.sd <- sd(beta2_store[(B+1):(B+T)])
+
+post.beta2.lower.cl <- quantile(beta2_store[(B+1):(B+T)],probs = 0.025)
+post.beta2.upper.cl <- quantile(beta2_store[(B+1):(B+T)],probs = 0.975)
+
+post.beta2.min <- min(beta2_store[(B+1):(B+T)])
+post.beta2.max <- max(beta2_store[(B+1):(B+T)])
+
+
+
+```
+
+```{r q2.4 beta12 trace,fig.align='center',fig.width=7,fig.height=8}
+# Monitor convergence
+par(mfrow = c(4,2))
+plot(cbind (c( theta_initial , theta_store ) , c( lambda_initial , lambda_store ) ) , type = "l", xlim = c(1, 5) , ylim = c(0, 3), 
+      xlab = expression ( theta ) , ylab = expression ( lambda ) , las = 1)
+plot(c( theta_initial , theta_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression ( theta ), las = 1)
+plot(c( lambda_initial , lambda_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( lambda ) , las = 1)
+
+plot(c( R_initial , R_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( R = theta/lambda ) , las = 1)
+plot(c( k_initial , k_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( k ) , las = 1)
+plot(c( beta1_initial , beta1_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( beta1 ) , las = 1)
+plot(c( beta2_initial , beta2_store ) , type = "l", 
+      xlab = " Iteration ", ylab = expression( beta2 ) , las = 1)
+```
+
+```{r q2.4 beta12 hist,fig.align='center',fig.width=7,fig.height=8}
+
+par(mfrow = c(4,2))
+# Visualize the joint and marginal posterior
+require(MASS)
+# contour
+z <- kde2d ( theta_store[(B+1):(B+T)] , lambda_store[(B+1):(B+T)])
+contour(z , xlim = c(2.5, 3.75) , ylim = c(0.5, 1.5) , las = 1, 
+        xlab = expression ( theta ) , ylab =expression ( lambda ) )
+# theta hist
+hist(theta_store[(B+1):(B+T)], freq = FALSE , xlab = expression( theta ), las = 1,
+     main = paste0(" Post.mean = ", round(post.theta.mean, 2), ", CI = [", round(post.theta.lower.cl ,2), ",",round(post.theta.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.theta.mean , col = 3)
+abline ( v = c(post.theta.lower.cl,post.theta.upper.cl) , col = 2, lty = 2)
+lines(density(theta_store[(B+1):(B+T)]))
+
+
+# lambda hist
+hist(lambda_store[(B+1):(B+T)], freq = FALSE, xlab = expression( lambda ), las = 1,   
+     main = paste0(" Post.mean = ", round(post.lambda.mean, 2), ", CI = [", round(post.lambda.lower.cl ,2), ",",round(post.lambda.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.lambda.mean , col = 3)
+abline ( v = c(post.lambda.lower.cl,post.lambda.upper.cl) , col = 2, lty = 2)
+lines(density(lambda_store[(B+1):(B+T)]))
+
+# R hist
+hist(R_store[(B+1):(B+T)], freq = FALSE, xlab = expression( R = theta/ lambda ), las = 1,   
+     main = paste0(" Post.mean = ", round(post.R.mean, 2), ", CI = [", round(post.R.lower.cl ,2), ",",round(post.R.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.R.mean , col = 3)
+abline ( v = c(post.R.lower.cl,post.R.upper.cl) , col = 2, lty = 2)
+lines(density(R_store[(B+1):(B+T)]))
+
+# k hist
+hist(k_store[(B+1):(B+T)], freq = FALSE, xlab = "k", las = 1,   
+     main = paste0(" Post.mean = ", round(post.k.mean, 2), ", CI = [", round(post.k.lower.cl ,2), ",",round(post.k.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.k.mean , col = 3)
+abline ( v = c(post.k.lower.cl,post.k.upper.cl) , col = 2, lty = 2)
+lines(density(k_store[(B+1):(B+T)]))
+
+# beta1 hist
+hist(beta1_store[(B+1):(B+T)], freq = FALSE, xlab = "beta1", las = 1,   
+     main = paste0(" Post.mean = ", round(post.beta1.mean, 2), ", CI = [", round(post.beta1.lower.cl ,2), ",",round(post.beta1.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.beta1.mean , col = 3)
+abline ( v = c(post.beta1.lower.cl,post.beta1.upper.cl) , col = 2, lty = 2)
+lines(density(beta1_store[(B+1):(B+T)]))
+
+# beta2 hist
+hist(beta2_store[(B+1):(B+T)], freq = FALSE, xlab = "beta2", las = 1,   
+     main = paste0(" Post.mean = ", round(post.beta2.mean, 2), ", CI = [", round(post.beta2.lower.cl ,2), ",",round(post.beta2.upper.cl,2), "]") , cex.main = 1)
+abline ( v = post.beta2.mean , col = 3)
+abline ( v = c(post.beta2.lower.cl,post.beta2.upper.cl) , col = 2, lty = 2)
+lines(density(beta2_store[(B+1):(B+T)]))
+
+```
+
+```{r q2.4 beta12 summary stats}
+
+# summary table 
+post.theta.summary <- c(round(post.theta.min,5),round(post.theta.meadian,5),
+                        round(post.theta.mean,5),round(post.theta.sd,5),
+                        paste("(",round(post.theta.lower.cl,5),",",
+                              round(post.theta.upper.cl,5),")"), 
+                        round(post.theta.max,5))
+post.lambda.summary <- c(round(post.lambda.min,5),round(post.lambda.meadian,5),
+                         round(post.lambda.mean,5), round(post.lambda.sd,5),
+                         paste("(",round(post.lambda.lower.cl,5),",",
+                               round(post.lambda.upper.cl,5),")"),
+                         round(post.lambda.max,5))
+post.R.summary <- c(round(post.R.min,5),round(post.R.meadian,5),round(post.R.mean,5), round(post.R.sd,5),
+                    paste("(",round(post.R.lower.cl,5),",",round(post.R.upper.cl,5),")"),
+                    round(post.R.max,5))
+post.k.summary <- c(round(post.k.min,5),round(post.k.meadian,5),round(post.k.mean,5),round(post.k.sd,5),
+                    paste("(",round(post.k.lower.cl,5),",",round(post.k.upper.cl,5),")"),
+                    round(post.k.max,5))
+post.beta1.summary <- c(round(post.beta1.min,5),round(post.beta1.meadian,5),round(post.beta1.mean,5),
+                        round(post.beta1.sd,5),
+                    paste("(",round(post.beta1.lower.cl,5),",",round(post.beta1.upper.cl,5),")"),
+                    round(post.beta1.max,5))
+post.beta2.summary <- c(round(post.beta2.min,5),round(post.beta2.meadian,5),round(post.beta2.mean,5),
+                        round(post.beta2.sd,5),
+                    paste("(",round(post.beta2.lower.cl,5),",",round(post.beta2.upper.cl,5),")"),
+                    round(post.beta2.max,5))
+
+table.q22 <- as.data.frame(rbind(post.theta.summary,post.lambda.summary,
+                                 post.R.summary,post.k.summary,
+                                 post.beta1.summary,post.beta2.summary))
+row.names(table.q22) <- c("theta","lambda","R","k","beta1","beta2")#paste("$",c("\\theta","\\lambda","R"),"$",sep = "")
+  #c("$\\theta$","$\\lambda$","$R = \\theta/\\lambda$")
+ 
+library(kableExtra)
+knitr::kable(table.q22,booktabs = T,format = "pandoc",col.names = c("Posterior Min","Posterior Median","Posterior Mean","Posterior sd", "95% Credible interval","Posterior Max"),caption = "Posterior Summary Statistics of $\\theta,\\lambda,R = \\theta / \\lambda$, k, $\\beta_1$, $\\beta_2$", align = "cccccc") %>% 
+  kable_styling(latex_options = c("hold_position","scale_down"))
+```
+
+
+\newpage
+# Problem 3: Model comparison on regression models
+
+For the following data we consider two competing models: $H_1$: a linear vs. $H_2$: a quadratic regression.
+
+```{r,echo = FALSE}
+library(kableExtra)
+r1 <- c(-1.9 , -0.39 , 0.79 , -0.20 , 0.42 , -0.35 , 0.67 , 0.63 , -0.024 , 1.2)
+r2 <- c(-1.7 ,-0.23 , 0.50 , -0.66 , 1.97 , 0.10 , 0.60 , 1.13 , -0.943 , 2.6)
+
+df <- as.data.frame(rbind(r1,r2))
+rownames(df) <- paste("$",c("x","y"),"_i$",sep = "")
+knitr::kable(df,booktabs = T,format = "pandoc",escape = F,col.names = rep("",10)) %>% 
+  kable_styling(latex_options = c("hold_position"))
+
+```
+
+Model $H_1$:
+
+```{=tex}
+\begin{align*}
+y_i &= \beta_1 + \beta_2 x_i + \epsilon_i,\quad i = 1, \dots,n\\
+\beta_1 &\sim N(0,1)\\
+\beta_2 &\sim N(1,1) \\
+\epsilon_i &\sim N(0,1)\\
+\end{align*}
+```
+with $\beta_1$ and $\beta_2$ a priori independent.
+
+Model $H_2$:\
+
+```{=tex}
+\begin{align*}
+y_i &= \gamma_1 + \gamma_2 x_i + \gamma_3 x_i^2 + \epsilon_i,\quad i = 1, \dots,n\\
+\gamma_1,\gamma_3 &\sim N(0,1)\\
+\gamma_2 &\sim N(1,1) \\
+\epsilon_i &\sim N(0,1)\\
+\end{align*}
+```
+with $\gamma_1$, $\gamma_2$, and $\gamma_3$ a prior independent.
+
+## Question 3.1 (7 points)
+
+Find the marginal distributions $\pi(y_1,\dots,y_n|H_1) = \int f(y_1,\dots, y_n|\beta_1,\beta_2)\pi(\beta_1)\pi(\beta_2)d\beta_1 d\beta_2$
+
+```{=tex}
+\begin{align*}
+\pi(y_1,\dots,y_n|H_1) =& \int f(y_1,\dots, y_n|\beta_1,\beta_2)\pi(\beta_1)\pi(\beta_2)d\beta_1 d\beta_2\\
+\text{Integrate out } \beta_1 :&\\
+p(\bm{y}|\beta_2)  =& \int f(y_1,\dots, y_n|\beta_1,\beta_2)\pi(\beta_1)d\beta_1 \\
+=& \int N(y_1,\dots, y_n;\beta_1 1_n + \bm{x}\beta_2,I_n) N(\beta_1;0,1) d\beta_1\\
+=& \int (2\pi)^{-\frac{n}{2}}\text{exp}\bigg( -\frac{1}{2}(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2)^\top(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2) \bigg) (2\pi)^{-\frac{1}{2}}\text{exp}\bigg(-\frac{\beta_1^2}{2}\bigg) d \beta_1 \\
+=& (2\pi)^{-\frac{n+1}{2}}\int \text{exp}\bigg( -\frac{1}{2}(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2)^\top(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2) \bigg) \text{exp}\bigg(-\frac{\beta_1^2}{2}\bigg) d \beta_1 \\
+=& (2\pi)^{-\frac{n+1}{2}}\int \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top - n\beta_1^2 - \beta_2^2\bm{x}^\top\bm{x}\bigg)\text{exp}\bigg( \beta_1\bm{1}_n^\top\bm{y} - \beta_1\beta_2 \bm{1}_n^\top\bm{x} - \beta_2\bm{x}^\top\bm{y} \bigg) \text{exp}\bigg(-\frac{\beta_1^2}{2}\bigg) d \beta_1 \\
+=& (2\pi)^{-\frac{n+1}{2}} \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top)\bigg)\text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{x} +   \beta_2\bm{x}^\top\bm{y} \bigg) \int \text{exp}\bigg( -\frac{n+1}{2}\beta_1^2 + \bigg(\bm{1}_n^\top\bm{y} - \beta_2 \bm{1}_n^\top\bm{x}\bigg)\beta_1 \bigg) d\beta_1 \\
+=& (2\pi)^{-\frac{n+1}{2}} \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top)\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{x} +   \beta_2\bm{x}^\top\bm{y} \bigg) (2\pi)^{\frac{1}{2}}\bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \\
+&\text{exp} \bigg(  \frac{1}{2} \frac{1}{n+1} (\bm{y} - \beta_2\bm{x})^\top\bm{1}_n\bm{1}_n^\top(\bm{y} - \beta_2\bm{x})\bigg) \int N\bigg( \beta_1; \frac{1}{n+1}\bigg(\bm{1}_n^\top\bm{y} - \beta_2 \bm{1}_n^\top\bm{x}\bigg), \frac{1}{n+1}\bigg) d\beta_1 \\
+=& (2\pi)^{-\frac{n}{2}} \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top)\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{x} +   \beta_2\bm{x}^\top\bm{y} \bigg)  \\
+&\text{exp} \bigg(  \frac{1}{2} \frac{1}{n+1}\bm{y}^\top\bm{1}_n\bm{1}_n^\top\bm{y} + \frac{1}{2} \frac{1}{n+1} \beta_2^2\bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{x} - \frac{1}{n+1} \beta_2\bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{y} \bigg) \\
+=& (2\pi)^{-\frac{n}{2}} \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}(\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top)\bm{y}^\top\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top(\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top)\bm{x} +   \beta_2\bm{x}^\top(\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top)\bm{y} \bigg)  \\
+=& (2\pi)^{-\frac{n}{2}} \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{H}_n\bm{x} +   \beta_2\bm{x}^\top\bm{H}_n\bm{y} \bigg)  \\
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top \\
+\\
+\text{Integrate out } \beta_2 :&\\
+p(\bm{y}|H_1) =& \int p(\bm{y}|\beta_2) p(\beta_2)d\beta_2  \\
+=& \int p(\bm{y}|\beta_2) N(\beta_2;1,1)d\beta_2  \\
+=& \int (2\pi)^{-\frac{n}{2}} \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{H}_n\bm{x} +   \beta_2\bm{x}^\top\bm{H}_n\bm{y} \bigg) \\
+&(2\pi)^{-\frac{1}{2}}\text{exp}\bigg(-\frac{(\beta_2 - 1)^2}{2}\bigg) d \beta_2 \\
+=& (2\pi)^{-\frac{n+1}{2}} \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \int   \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{H}_n\bm{x} +   \beta_2\bm{x}^\top\bm{H}_n\bm{y} \bigg) \\
+&\text{exp}\bigg(-\frac{\beta_2^2}{2} + \beta_2 - \frac{1}{2}\bigg) d \beta_2 \\
+=& (2\pi)^{-\frac{n+1}{2}} \text{exp}\bigg( -\frac{1}{2}\bigg) \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \int   \text{exp}\bigg( -\frac{1}{2} \beta_2^2(1+\bm{x}^\top\bm{H}_n\bm{x}) +   \beta_2(1 + \bm{x}^\top\bm{H}_n\bm{y}) \bigg) d \beta_2 \\
+=& (2\pi)^{-\frac{n+1}{2}} \text{exp}\bigg( -\frac{1}{2}\bigg) \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg)  \\
+& (2\pi)^{\frac{1}{2}} \bigg(\frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bigg)^{\frac{1}{2}} \text{exp}\bigg( \frac{1}{2}\frac{(1 + \bm{x}^\top\bm{H}_n\bm{y})^2}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bigg) \int N\bigg(\beta_2; \frac{1 + \bm{x}^\top\bm{H}_n\bm{y}}{1+\bm{x}^\top\bm{H}_n\bm{x}},\frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bigg) d \beta_2 \\
+=& (2\pi)^{-\frac{n}{2}} \text{exp}\bigg( -\frac{1}{2}\bigg) \bigg(\frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bigg)^{\frac{1}{2}} \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg)  \text{exp}\bigg( \frac{1}{2}\frac{(1 + \bm{x}^\top\bm{H}_n\bm{y})^\top(1 + \bm{x}^\top\bm{H}_n\bm{y})}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bigg) \\
+=& (2\pi)^{-\frac{n}{2}} \text{exp}\bigg( -\frac{1}{2}\bigg) \bigg(\frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bigg)^{\frac{1}{2}} \bigg( \frac{1}{n+1} \bigg)^{\frac{1}{2}} \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \\
+&\text{exp}\bigg( \frac{1}{2}\frac{\bm{y}^\top\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bm{y}}{1+\bm{x}^\top\bm{H}_n\bm{x}} + \frac{\bm{y}^\top\bm{H}_n^\top\bm{x}}{1+\bm{x}^\top\bm{H}_n\bm{x}} + \frac{1}{2} \bigg)\\
+\propto& \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top(\bm{H}_n - \frac{\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n}{1+\bm{x}^\top\bm{H}_n\bm{x}})\bm{y} + \frac{\bm{y}^\top\bm{H}_n^\top\bm{x}}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bigg) \\
+\bm{y}|H_1 \sim& MN\bigg( \bigg(\bm{H}_n - \frac{\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bigg)^{-1} \frac{\bm{H}_n^\top\bm{x}}{1+\bm{x}^\top\bm{H}_n\bm{x}}, \bigg(\bm{H}_n - \frac{\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bigg)^{-1}\bigg)\\
+\\
+\bm{y}|H_1 \sim& MN \bigg(\bm{C}^{-1}\bm{u},  \bm{C}^{-1}  \bigg) \\
+&\text{where } \bm{C} = \bm{H}_n - \frac{\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n}{1+\bm{x}^\top\bm{H}_n\bm{x}} \\
+&\text{where } \bm{u} = \frac{\bm{H}_n^\top\bm{x}}{1+\bm{x}^\top\bm{H}_n\bm{x}} \\
+\end{align*}
+```
+## Question 3.2 (7 points)
+
+Find the marginal distributions $\pi(y_1,\dots,y_n|H_2) = \int f(y_1,\dots, y_n|\gamma_1,\gamma_2,\gamma_3)\pi(\gamma_1)\pi(\gamma_2)\pi(\gamma_3)d\gamma_1 d\gamma_2 d\gamma_3$
+
+```{=tex}
+\begin{align*}
+\pi(y_1,\dots,y_n|H_2) =& \int f(y_1,\dots, y_n|\gamma_1,\gamma_2,\gamma_3)\pi(\gamma_1)\pi(\gamma_2)\pi(\gamma_3)d\gamma_1 d\gamma_2 d\gamma_3 \\
+\text{Integrate out }\gamma_1:&\\
+p(\bm{y}|\gamma_2,\gamma_3) =& \int f(y_1,\dots, y_n|\gamma_1,\gamma_2,\gamma_3)\pi(\gamma_1) d \gamma_1 \\
+=& \int N (\bm{y}; \gamma_1 \bm{1}_n +  \gamma_2 \bm{x} + \gamma_3 \bm{x}\circ\bm{x},\bm{I}_n ) N(\gamma_1;0,1) d \gamma_1  \\
+\propto& \int \text{exp} \bigg( -\frac{1}{2} (\bm{y} - \gamma_1 \bm{1}_n -  \gamma_2 \bm{x} - \gamma_3 \bm{x}\circ\bm{x})^\top (\bm{y} - \gamma_1 \bm{1}_n -  \gamma_2 \bm{x} - \gamma_3 \bm{x}\circ\bm{x})\bigg) \text{exp}\bigg(  -\frac{\gamma_1^2}{2} \bigg) d\gamma_1\\
+=& \int \text{exp} \bigg( -\frac{1}{2} \bigg(\bm{y}^\top\bm{y} + n\gamma_1^2 + \gamma_2^2 \bm{x}^\top\bm{x} + \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) \bigg)  \bigg)\\
+& \text{exp} \bigg(  \gamma_1\bm{1}_n^\top\bm{y} - \gamma_1 \gamma_2 \bm{1}_n^\top\bm{x} - \gamma_1 \gamma_3 \bm{1}_n^\top(\bm{x}\circ\bm{x}) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}) \bigg)\text{exp}\bigg(  -\frac{\gamma_1^2}{2} \bigg) d\gamma_1\\
+=& \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) 
+\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\int \text{exp} \bigg( -\frac{n+1}{2} \gamma_1^2  + \bm{1}_n^\top(\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x})) \gamma_1 \bigg) d\gamma_1\\
+=& \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{exp}\bigg( \frac{1}{2}\frac{1}{n+1} (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))^\top \bm{1}_n\bm{1}_n^\top (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))  \bigg) \\
+&\int N\bigg( \gamma_1; \frac{1}{n+1}(\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x})),\frac{1}{n+1} \bigg) d\gamma_1\\
+=& \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{exp}\bigg( \frac{1}{2}\frac{1}{n+1} (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))^\top \bm{1}_n\bm{1}_n^\top (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))  \bigg) \\
+=& \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{exp}\bigg( \frac{1}{2}\frac{1}{n+1} \bm{y}^\top \bm{1}_n\bm{1}_n^\top \bm{y} + \frac{1}{2}\frac{1}{n+1}\gamma_2^2 \bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{x} + \frac{1}{2}\frac{1}{n+1}\gamma_3^2  (\bm{x}\circ\bm{x})^\top \bm{1}_n\bm{1}_n^\top (\bm{x}\circ\bm{x})  \bigg) \\
+& \text{exp}\bigg( -\frac{1}{n+1}\gamma_2 \bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{y} + \frac{1}{n+1}\gamma_2 \gamma_3 \bm{x}^\top \bm{1}_n\bm{1}_n^\top (\bm{x}\circ\bm{x}) - \frac{1}{n+1}\gamma_3 (\bm{x}\circ\bm{x})^\top \bm{1}_n\bm{1}_n^\top\bm{y} \bigg)\\
+=& \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top(\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top)\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top) (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top (\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top) \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top(\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top)\bm{x}\bigg) + \gamma_2 \bm{x}^\top(\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top)\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top)(\bm{x}\circ\bm{x}) \bigg) \\
+=& \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \gamma_2^2 \bm{x}^\top\bm{H}_n\bm{x} + \gamma_2 \bm{x}^\top\bm{H}_n\bm{y} - \gamma_2\gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top \\
+\\
+\text{Integrate out } \gamma_2 :&\\
+p(\bm{y}|\gamma_3) =& \int p(y|\gamma_2,\gamma_3) p(\gamma_2) d \gamma_2 \\
+=& \int p(y|\gamma_2,\gamma_3) N(\gamma_2;1,1) d \gamma_2 \\ 
+\propto&  \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+& \int \text{exp}\bigg( -\frac{1}{2} \gamma_2^2 \bm{x}^\top\bm{H}_n\bm{x} + \gamma_2 \bm{x}^\top\bm{H}_n\bm{y} - \gamma_2\gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) \bigg) \text{exp}\bigg( -\frac{\gamma_2^2}{2} + \gamma_2\bigg) d \gamma_2 \\
+=&  \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+& \int \text{exp}\bigg( -\frac{1}{2} \gamma_2^2 (1+\bm{x}^\top\bm{H}_n\bm{x}) + \gamma_2 (1 + \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) ) \bigg) d \gamma_2 \\
+\propto&  \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp} \bigg(  \frac{1}{2} \frac{1}{(1+\bm{x}^\top\bm{H}_n\bm{x}) } (1 + \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )^\top (1 + \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )  \bigg) \\
+& \int N\bigg(\gamma_2; \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}(1 + \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) ), \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bigg) d \gamma_2 \\
+=&  \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp} \bigg(  \frac{1}{2} \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x} } 
+(1 + \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )^\top 
+(1 + \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )  \bigg) \\
+=&  \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp} \bigg( \frac{1}{2} \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x} }\bigg( 
+1 + \bm{y}^\top\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bm{y}   + 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x})  \bigg)\bigg) \\
+&\text{exp} \bigg(\frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x} }\bigg(  
+\bm{y}^\top\bm{H}_n^\top\bm{x} - 
+\gamma_3 \bm{y}^\top\bm{H}_n^\top\bm{x} \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) -
+\gamma_3 (\bm{x}\circ\bm{x})^\top\bm{H}_n^\top\bm{x} -
+\gamma_3 (\bm{x}\circ\bm{x})^\top\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bm{y}
+\bigg)\bigg)\\
+\propto&  \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bigg(\bm{H}_n - \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x} }\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bigg)\bm{y} + \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bm{y}^\top\bm{H}_n^\top\bm{x} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top \bigg(\bm{H}_n - \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x} }\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bigg) (\bm{x}\circ\bm{x}) + \\
+&\gamma_3 (\bm{x}\circ\bm{x})^\top \bigg(\bm{H}_n - \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x} }\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bigg) \bm{y} 
+- \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\gamma_3 \bm{y}^\top\bm{H}_n^\top\bm{x} \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) - \\
+&\frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\gamma_3 (\bm{x}\circ\bm{x})^\top\bm{H}_n^\top\bm{x} 
+\bigg) \\
+=&  \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y} + \bm{y}^\top\bm{s} \bigg) 
+\text{exp} \bigg(  -\frac{1}{2} 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x}) + 
+\gamma_3 (\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+\gamma_3 \bm{z}^\top\bm{y} - \gamma_3 (\bm{x}\circ\bm{x})^\top\bm{s} 
+\bigg) \\
+&\text{where } \bm{G}_n = \bm{H}_n - \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n \\
+&\text{where } \bm{z} = \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bm{H}_n^\top\bm{x} \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) \\
+&\text{where } \bm{s} = \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top\bm{x} \\
+\\
+\text{Integrate out } \gamma_3 :&\\
+p(\bm{y}|H_2) =& \int p(\bm{y}|\gamma_3) p(\gamma_3) d \gamma_3 \\
+=& \int p(\bm{y}|\gamma_3) N(\gamma_3;0,1) d \gamma_3 \\
+\propto&  \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y} + \bm{y}^\top\bm{s} \bigg)  \\
+&\int \text{exp} \bigg(  -\frac{1}{2} 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x}) + 
+\gamma_3 (\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+\gamma_3 \bm{z}^\top\bm{y} - \gamma_3 (\bm{x}\circ\bm{x})^\top\bm{s} 
+\bigg)
+\text{exp} \bigg( -\frac{\gamma_3^2}{2}\bigg) d \gamma_3\\
+=&  \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y} + \bm{y}^\top\bm{s} \bigg)  \\
+&\int \text{exp} \bigg(  -\frac{1}{2} 
+\gamma_3^2 (1+(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})) + 
+\gamma_3 \bigg((\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+ \bm{z}^\top\bm{y} -  (\bm{x}\circ\bm{x})^\top\bm{s} \bigg)
+\bigg) d \gamma_3\\
+=&  \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y} + \bm{y}^\top\bm{s} \bigg)  \\
+&\text{exp}\bigg( \frac{1}{2} \frac{1}{1+(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} \bigg((\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+ \bm{z}^\top\bm{y} -  (\bm{x}\circ\bm{x})^\top\bm{s} \bigg)^\top \bigg((\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+ \bm{z}^\top\bm{y} -  (\bm{x}\circ\bm{x})^\top\bm{s} \bigg)\bigg) \\
+&\int N\bigg( \gamma_3; \frac{1}{1+(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} \bigg((\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+ \bm{z}^\top\bm{y} -  (\bm{x}\circ\bm{x})^\top\bm{s} \bigg), \frac{1}{1+(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})}\bigg) d \gamma_3\\
+ =&  \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y} + \bm{y}^\top\bm{s} \bigg)  \\
+&\text{exp}\bigg( \frac{1}{\bm{2d}} \bigg((\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+\bm{z}^\top\bm{y} -  (\bm{x}\circ\bm{x})^\top\bm{s} \bigg)^\top 
+\bigg((\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} -
+\bm{z}^\top\bm{y} -  
+(\bm{x}\circ\bm{x})^\top\bm{s} \bigg)\bigg) \\
+ =&  \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y} + \bm{y}^\top\bm{s} \bigg)  \\
+&\text{exp}\bigg( \frac{1}{\bm{2d}}\bigg( \bm{y}^\top \bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} +  \bm{y}^\top\bm{z}\bm{z}^\top\bm{y}  + \bm{s}^\top(\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top\bm{s} \bigg) \bigg) \\
+&\text{exp}\bigg( \frac{1}{\bm{d}}\bigg( - \bm{y}^\top \bm{z}(\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y} + \bm{y}^\top \bm{z}(\bm{x}\circ\bm{x})^\top\bm{s} -  \bm{y}^\top\bm{G}_n^\top(\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top\bm{s} \bigg)\bigg)\\
+\propto& \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bigg(\bm{G}_n -  \frac{1}{d}\bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n - \frac{1}{d}\bm{z}\bm{z}^\top + \frac{2}{d}\bm{z}(\bm{x}\circ\bm{x})^\top \bm{G}_n \bigg)\bm{y} \\
++& \bm{y}^\top \bigg( \bm{s} + \frac{1}{\bm{d}}\bm{z}(\bm{x}\circ\bm{x})^\top\bm{s}  - \frac{1}{\bm{d}} \bm{G}_n^\top(\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top\bm{s}\bigg)\bigg)\\ 
+\\
+\bm{y}|H_2 \sim& MN \bigg(\bm{A}^{-1}\bm{b}, \bm{A}^{-1}\bigg) \\ 
+\\
+&\text{where } \bm{d} = 1+(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})\\
+&\text{where } \bm{A} = \bm{G}_n -  \frac{1}{d}\bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n - \frac{1}{d}\bm{z}\bm{z}^\top + \frac{2}{d}\bm{z}(\bm{x}\circ\bm{x})^\top \bm{G}_n \\
+&\text{where } \bm{b} = \bm{s} + \frac{1}{\bm{d}}\bm{z}(\bm{x}\circ\bm{x})^\top\bm{s}  - \frac{1}{\bm{d}} \bm{G}_n^\top(\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top\bm{s}\\
+\end{align*}
+```
+
+
+\newpage
+## Question 3.3 (8 points) 
+  
+Write down the Bayes factor $B = f(y_1,\dots,y_n|H_2)/f(y_1,\dots,y_n|H_1)$ for comparing the two models and evaluate it for the given data set.
+
+```{=tex}
+\begin{align*}
+\bm{y}|H_1 \sim& MN \bigg(\bm{C}^{-1}\bm{u},  \bm{C}^{-1}  \bigg) \\
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top \\
+&\text{where } \bm{C} = \bm{H}_n - \frac{\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n}{1+\bm{x}^\top\bm{H}_n\bm{x}} \\
+&\text{where } \bm{u} = \frac{\bm{H}_n^\top\bm{x}}{1+\bm{x}^\top\bm{H}_n\bm{x}} \\
+\\
+\bm{y}|H_2 \sim& MN \bigg(\bm{A}^{-1}\bm{b}, \bm{A}^{-1}\bigg) \\ 
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n+1}\bm{1}_n\bm{1}_n^\top \\
+&\text{where } \bm{G}_n = \bm{H}_n - \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n \\
+&\text{where } \bm{z} = \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}}\bm{H}_n^\top\bm{x} \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) \\
+&\text{where } \bm{s} = \frac{1}{1+\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top\bm{x} \\
+&\text{where } \bm{d} = 1+(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})\\
+&\text{where } \bm{A} = \bm{G}_n -  \frac{1}{d}\bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n - \frac{1}{d}\bm{z}\bm{z}^\top + \frac{2}{d}\bm{z}(\bm{x}\circ\bm{x})^\top \bm{G}_n \\
+&\text{where } \bm{b} = \bm{s} + \frac{1}{\bm{d}}\bm{z}(\bm{x}\circ\bm{x})^\top\bm{s}  - \frac{1}{\bm{d}} \bm{G}_n^\top(\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top\bm{s}\\
+\\
+\\
+B =& \frac{(2\pi)^{-\frac{n}{2}} |\bm{A}|^{1/2} \text{exp}\bigg( -\frac{1}{2} (\bm{y} - \bm{A}^{-1}\bm{b})^\top\bm{A} (\bm{y} - \bm{A}^{-1}\bm{b})\bigg) }{(2\pi)^{-\frac{n}{2}} |\bm{C}|^{1/2} \text{exp}\bigg( -\frac{1}{2} (\bm{y} - \bm{C}^{-1}\bm{u})^\top\bm{C} (\bm{y} - \bm{C}^{-1}\bm{u})\bigg)} \\
+=& \frac{ |\bm{A}|^{1/2} \text{exp}\bigg( -\frac{1}{2} (\bm{y} - \bm{A}^{-1}\bm{b})^\top\bm{A} (\bm{y} - \bm{A}^{-1}\bm{b})\bigg) }{ |\bm{C}|^{1/2} \text{exp}\bigg( -\frac{1}{2} (\bm{y} - \bm{C}^{-1}\bm{u})^\top\bm{C} (\bm{y} - \bm{C}^{-1}\bm{u})\bigg)} \\
+\end{align*}
+```
+```{r q3.3}
+# load the data
+x <- c(-1.9 , -0.39 , 0.79 , -0.20 , 0.42 , -0.35 , 0.67 , 0.63 , -0.024 , 1.2)
+y <- c(-1.7 ,-0.23 , 0.50 , -0.66 , 1.97 , 0.10 , 0.60 , 1.13 , -0.943 , 2.6)
+
+# data summary and calc needed for BF
+n <- length(x)
+x2 <- x^2
+one <- rep(1,n)
+I <- diag(n)
+
+# H1 stats
+Hn1 <- I - (1/(n+1)) *one %*% t(one)
+C <- Hn1 - (t(Hn1) %*% x %*% t(x) %*% Hn1)/ (1 + t(x) %*% Hn1 %*% x)[1]
+u <- (t(Hn1) %*% x) / (1 + t(x) %*% Hn1 %*% x)[1]
+
+# H2 stats
+Hn2 <- I - (1/(n+1)) *one %*% t(one)
+G <- Hn2 - (t(Hn2) %*% x %*% t(x) %*% Hn2) / (1 + t(x)  %*% Hn2 %*% x)[1]
+z <- (t(Hn2) %*% x %*% t(x) %*% Hn2 %*% x2) / (1 + t(x)  %*% Hn2 %*% x)[1]
+s <- (t(Hn2) %*% x) / (1 + t(x)  %*% Hn2 %*% x)[1]
+d <- (1 + t(x2) %*% G %*% x2)[1]
+A <- G - (t(G) %*% x2 %*% t(x2) %*% G)/d - (z %*% t(z))/d + (2/d)* (z %*% t(x2) %*% G)
+b <- s + (z %*% t(x2) %*% s)/d - (t(G) %*% x2 %*% t(x2) %*% s ) / d
+
+# bayesfactor
+B <- (det(A)^(1/2) * exp( -(1/2) * t(y - solve(A) %*% b) %*% A %*% (y - solve(A) %*% b))[1]) / 
+  (det(C)^(1/2) * exp( -(1/2) * t(y - solve(C) %*% u) %*% C %*% (y - solve(C) %*% u))[1])
+print(paste("B = ",round(B,5)))
+```
+
+The calculated Bayes Factor is 0.42017 this indicates that model 1 $H_1$ may be a better model for the data.
+
+
+\newpage
+## Question 3.4 (10 points)
+
+We now replace the prior distribution by improper constant priors: $\pi(\beta_1) = \pi(\beta_2) = c_1$ in model $H_1$ and $\pi(\gamma_1) = \pi(\gamma_2) = \pi(\gamma_3) = c_2$ in model $H_2$. We can still obtain the marginal distributions and define a Bayes factor. Show that the value of the Bayes factor depends on both $c_1$ and $c_2$.
+
+```{=tex}
+\begin{align*}
+\pi(y_1,\dots,y_n|H_1) =& \int f(y_1,\dots, y_n|\beta_1,\beta_2)\pi(\beta_1)\pi(\beta_2)d\beta_1 d\beta_2\\
+\text{Integrate out } \beta_1 :&\\
+p(\bm{y}|\beta_2)  =& \int f(y_1,\dots, y_n|\beta_1,\beta_2)\pi(\beta_1)d\beta_1 \\
+=& \int N(y_1,\dots, y_n;\beta_1 1_n + \bm{x}\beta_2,I_n) c_1 d\beta_1\\
+=& c_1 \int (2\pi)^{-\frac{n}{2}}\text{exp}\bigg( -\frac{1}{2}(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2)^\top(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2) \bigg) d \beta_1 \\
+=& c_1 (2\pi)^{-\frac{n}{2}}\int \text{exp}\bigg( -\frac{1}{2}(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2)^\top(\bm{y} - \beta_1 \bm{1}_n - \bm{x}\beta_2) \bigg)  d \beta_1 \\
+=& c_1 (2\pi)^{-\frac{n}{2}}\int \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top - n\beta_1^2 - \beta_2^2\bm{x}^\top\bm{x}\bigg)\text{exp}\bigg( \beta_1\bm{1}_n^\top\bm{y} - \beta_1\beta_2 \bm{1}_n^\top\bm{x} - \beta_2\bm{x}^\top\bm{y} \bigg)  d \beta_1 \\
+=& c_1 (2\pi)^{-\frac{n}{2}} \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top)\bigg)\text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{x} +   \beta_2\bm{x}^\top\bm{y} \bigg) \int \text{exp}\bigg( -\frac{n}{2}\beta_1^2 + \bigg(\bm{1}_n^\top\bm{y} - \beta_2 \bm{1}_n^\top\bm{x}\bigg)\beta_1 \bigg) d\beta_1 \\
+\propto& c_1  \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top)\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{x} +   \beta_2\bm{x}^\top\bm{y} \bigg)  \\
+&\text{exp} \bigg( \frac{1}{2n} (\bm{y} - \beta_2\bm{x})^\top\bm{1}_n\bm{1}_n^\top(\bm{y} - \beta_2\bm{x})\bigg) \int N\bigg( \beta_1; \frac{1}{n}\bigg(\bm{1}_n^\top\bm{y} - \beta_2 \bm{1}_n^\top\bm{x}\bigg), \frac{1}{n}\bigg) d\beta_1 \\
+=& c_1  \text{exp}\bigg( -\frac{1}{2}(\bm{y}\bm{y}^\top)\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{x} +   \beta_2\bm{x}^\top\bm{y} \bigg)  \\
+&\text{exp} \bigg(   \frac{1}{2n}\bm{y}^\top\bm{1}_n\bm{1}_n^\top\bm{y} +  \frac{1}{2n} \beta_2^2\bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{x} - \frac{1}{n} \beta_2\bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{y} \bigg) \\
+=& c_1  \text{exp}\bigg( -\frac{1}{2}\bm{y}(\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top)\bm{y}^\top\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top(\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top)\bm{x} +   \beta_2\bm{x}^\top(\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top)\bm{y} \bigg)  \\
+=& c_1 \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{H}_n\bm{x} +   \beta_2\bm{x}^\top\bm{H}_n\bm{y} \bigg)  \\
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top \\
+\\
+\text{Integrate out } \beta_2 :&\\
+p(\bm{y}|H_1) =& \int p(\bm{y}|\beta_2) p(\beta_2)d\beta_2  \\
+=& \int p(\bm{y}|\beta_2) c_1 d\beta_2  \\
+\propto& \int  c_1^2\text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{H}_n\bm{x} +   \beta_2\bm{x}^\top\bm{H}_n\bm{y} \bigg) d \beta_2 \\
+=& c_1^2 \text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \int   \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{H}_n\bm{x} +   \beta_2\bm{x}^\top\bm{H}_n\bm{y} \bigg) d \beta_2 \\
+=& c_1^2\text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg) \int   \text{exp}\bigg( -\frac{1}{2} \beta_2^2\bm{x}^\top\bm{H}_n\bm{x} +   \beta_2\bm{x}^\top\bm{H}_n\bm{y} \bigg) d \beta_2 \\
+=& c_1^2\text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bm{H}_n\bm{y}\bigg)  \text{exp}\bigg( \frac{1}{2}\frac{\bm{y}^\top\bm{H}_n^\top \bm{x} \bm{x}^\top\bm{H}_n\bm{y}}{\bm{x}^\top\bm{H}_n\bm{x}} \bigg) \int N\bigg(\beta_2; \frac{ \bm{x}^\top\bm{H}_n\bm{y}}{\bm{x}^\top\bm{H}_n\bm{x}},\frac{1}{\bm{x}^\top\bm{H}_n\bm{x}} \bigg) d \beta_2 \\
+\\
+\propto&c_1^2\text{exp}\bigg( -\frac{1}{2}\bm{y}^\top\bigg(\bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top \bm{x} \bm{x}^\top\bm{H}_n \bigg)\bm{y}\bigg)\\
+=& c_1^2\text{exp}\bigg( -\frac{1}{2}\bm{y}^\top \bm{C}\bm{y}\bigg)\\
+\\
+\bm{y}|H_1 \sim& c_1^2 MN \bigg(\bm{0}_n,  \bm{C}^{-1}  \bigg) \\
+&\text{where } \bm{C} = \bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top \bm{x} \bm{x}^\top\bm{H}_n \\
+\end{align*}
+```
+```{=tex}
+\begin{align*}
+\pi(y_1,\dots,y_n|H_2) =& \int f(y_1,\dots, y_n|\gamma_1,\gamma_2,\gamma_3)\pi(\gamma_1)\pi(\gamma_2)\pi(\gamma_3)d\gamma_1 d\gamma_2 d\gamma_3 \\
+\text{Integrate out }\gamma_1:&\\
+p(\bm{y}|\gamma_2,\gamma_3) =& \int f(y_1,\dots, y_n|\gamma_1,\gamma_2,\gamma_3)\pi(\gamma_1) d \gamma_1 \\
+=& \int N (\bm{y}; \gamma_1 \bm{1}_n +  \gamma_2 \bm{x} + \gamma_3 \bm{x}\circ\bm{x},\bm{I}_n ) c_2 d \gamma_1  \\
+\propto& \int c_2\text{exp} \bigg( -\frac{1}{2} (\bm{y} - \gamma_1 \bm{1}_n -  \gamma_2 \bm{x} - \gamma_3 \bm{x}\circ\bm{x})^\top (\bm{y} - \gamma_1 \bm{1}_n -  \gamma_2 \bm{x} - \gamma_3 \bm{x}\circ\bm{x})\bigg)  d\gamma_1\\
+=& c_2 \int \text{exp} \bigg( -\frac{1}{2} \bigg(\bm{y}^\top\bm{y} + n\gamma_1^2 + \gamma_2^2 \bm{x}^\top\bm{x} + \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) \bigg)  \bigg)\\
+& \text{exp} \bigg(  \gamma_1\bm{1}_n^\top\bm{y} - \gamma_1 \gamma_2 \bm{1}_n^\top\bm{x} - \gamma_1 \gamma_3 \bm{1}_n^\top(\bm{x}\circ\bm{x}) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}) \bigg) d\gamma_1\\
+=& c_2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) 
+\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\int \text{exp} \bigg( -\frac{n}{2} \gamma_1^2  + \bm{1}_n^\top(\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x})) \gamma_1 \bigg) d\gamma_1\\
+=& c_2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{exp}\bigg( \frac{1}{2}\frac{1}{n} (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))^\top \bm{1}_n\bm{1}_n^\top (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))  \bigg) \\
+&\int N\bigg( \gamma_1; \frac{1}{n}(\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x})),\frac{1}{n} \bigg) d\gamma_1\\
+=& c_2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{exp}\bigg( \frac{1}{2n} (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))^\top \bm{1}_n\bm{1}_n^\top (\bm{y} - \gamma_2 \bm{x} -  \gamma_3 (\bm{x}\circ\bm{x}))  \bigg) \\
+=& c_2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top\bm{x}\bigg) + \gamma_2 \bm{x}^\top\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{exp}\bigg( \frac{1}{2n} \bm{y}^\top \bm{1}_n\bm{1}_n^\top \bm{y} + \frac{1}{2n}\gamma_2^2 \bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{x} + \frac{1}{2n}\gamma_3^2  (\bm{x}\circ\bm{x})^\top \bm{1}_n\bm{1}_n^\top (\bm{x}\circ\bm{x})  \bigg) \\
+& \text{exp}\bigg( -\frac{1}{n}\gamma_2 \bm{x}^\top\bm{1}_n\bm{1}_n^\top\bm{y} + \frac{1}{n}\gamma_2 \gamma_3 \bm{x}^\top \bm{1}_n\bm{1}_n^\top (\bm{x}\circ\bm{x}) - \frac{1}{n}\gamma_3 (\bm{x}\circ\bm{x})^\top \bm{1}_n\bm{1}_n^\top\bm{y} \bigg)\\
+=& c_2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top(\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top)\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top (\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top) (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top (\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top) \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \bigg(\gamma_2^2 \bm{x}^\top(\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top)\bm{x}\bigg) + \gamma_2 \bm{x}^\top(\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top)\bm{y} - \gamma_2\gamma_3 \bm{x}^\top(\bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top)(\bm{x}\circ\bm{x}) \bigg) \\
+=& c_2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp}\bigg( -\frac{1}{2} \gamma_2^2 \bm{x}^\top\bm{H}_n\bm{x} + \gamma_2 \bm{x}^\top\bm{H}_n\bm{y} - \gamma_2\gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) \bigg) \\
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top \\
+\\
+\text{Integrate out } \gamma_2 :&\\
+p(\bm{y}|\gamma_3) =& \int p(y|\gamma_2,\gamma_3) p(\gamma_2) d \gamma_2 \\
+=& \int p(y|\gamma_2,\gamma_3) c_2 d \gamma_2 \\ 
+\propto&  c_2^2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+& \int \text{exp}\bigg( -\frac{1}{2} \gamma_2^2 \bm{x}^\top\bm{H}_n\bm{x} + \gamma_2 \bm{x}^\top\bm{H}_n\bm{y} - \gamma_2\gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) \bigg) d \gamma_2 \\
+=& c_2^2  \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+& \int \text{exp}\bigg( -\frac{1}{2} \gamma_2^2 \bm{x}^\top\bm{H}_n\bm{x} + \gamma_2 (\bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) ) \bigg) d \gamma_2 \\
+=&  c_2^2\text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp} \bigg(  \frac{1}{2} \frac{1}{\bm{x}^\top\bm{H}_n\bm{x} } ( \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )^\top (\bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )  \bigg) \\
+& \int N\bigg(\gamma_2; \frac{1}{\bm{x}^\top\bm{H}_n\bm{x}}( \bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) ), \frac{1}{\bm{x}^\top\bm{H}_n\bm{x}}\bigg) d \gamma_2 \\
+=& c_2^2 \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp} \bigg(  \frac{1}{2} \frac{1}{\bm{x}^\top\bm{H}_n\bm{x} } 
+(\bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )^\top 
+(\bm{x}^\top\bm{H}_n\bm{y} - \gamma_3 \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x}) )  \bigg) \\
+=& c_2^2 \text{exp} \bigg(  -\frac{1}{2} \bm{y}^\top\bm{H}_n\bm{y} \bigg) \text{exp} \bigg(  -\frac{1}{2} \gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{H}_n (\bm{x}\circ\bm{x}) + \gamma_3 (\bm{x}\circ\bm{x})^\top \bm{H}_n \bm{y}\bigg) \\
+&\text{exp} \bigg( \frac{1}{2} \frac{1}{\bm{x}^\top\bm{H}_n\bm{x} }\bigg( 
+\bm{y}^\top\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bm{y}   + 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x})  \bigg)\bigg) \\
+&\text{exp} \bigg(\frac{1}{\bm{x}^\top\bm{H}_n\bm{x} }\bigg(   - 
+\gamma_3 \bm{y}^\top\bm{H}_n^\top\bm{x} \bm{x}^\top\bm{H}_n(\bm{x}\circ\bm{x})
+\bigg)\bigg)\\
+\propto&  c_2^2\text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bigg(\bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x} }\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bigg)\bm{y} \bigg) \\
+&\text{exp} \bigg(  -\frac{1}{2} 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top \bigg(\bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x} }\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bigg) (\bm{x}\circ\bm{x})  \\
++&\gamma_3 \bm{y}^\top \bigg(\bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x} }\bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n\bigg)^\top (\bm{x}\circ\bm{x})
+\bigg) \\
+\\
+=&  c_2^2 \text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y} \bigg) 
+\text{exp} \bigg(  -\frac{1}{2} 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x}) + 
+\gamma_3 (\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y}
+\bigg) \\
+&\text{where } \bm{G}_n = \bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n \\
+\\
+\text{Integrate out } \gamma_3 :&\\
+p(\bm{y}|H_2) =& \int p(\bm{y}|\gamma_3) p(\gamma_3) d \gamma_3 \\
+=& \int p(\bm{y}|\gamma_3) c_2 d \gamma_3 \\
+\propto&  c_2^3\text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y}  \bigg)  
+\int \text{exp} \bigg(  -\frac{1}{2} 
+\gamma_3^2 (\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x}) + 
+\gamma_3 (\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y}
+\bigg) d \gamma_3\\
+\propto&  c_2^3\text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{G}_n\bm{y}  \bigg)  
+\text{exp} \bigg( \frac{1}{2}\frac{1}{(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} \bm{y}^\top \bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y}\bigg)\\
+&\int N\bigg(\gamma_3;  \frac{1}{(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} (\bm{x}\circ\bm{x})^\top \bm{G}_n \bm{y},\frac{1}{(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} \bigg) d \gamma_3\\
+=&  c_2^3\text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bigg(\bm{G}_n - \frac{1}{(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} \bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n \bigg)\bm{y}  \bigg)  \\
+=&  c_2^3\text{exp} \bigg(  -\frac{1}{2} 
+\bm{y}^\top\bm{A}\bm{y}  \bigg)  
+\\
+\bm{y}|H_2 \sim& c_2^3MN \bigg(\bm{0}, \bm{A}^{-1}\bigg) \\ 
+&\text{where } \bm{A} = \bm{G}_n - \frac{1}{(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} \bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n \\
+\end{align*}
+```
+```{=tex}
+\begin{align*}
+\text{Model 1 with improper constant prior } c_1:&\\
+\bm{y}|H_1 \sim& c_1^2 MN \bigg(\bm{0}_n,  \bm{C}^{-1}  \bigg) \\
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top \\
+&\text{where } \bm{C} = \bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top \bm{x} \bm{x}^\top\bm{H}_n \\
+\\
+\text{Model 2 with improper constant prior } c_2:&\\
+\bm{y}|H_2 \sim& c_2^3MN \bigg(\bm{0}, \bm{A}^{-1}\bigg) \\ 
+&\text{where } \bm{H}_n = \bm{I}_n - \frac{1}{n}\bm{1}_n\bm{1}_n^\top \\
+&\text{where } \bm{G}_n = \bm{H}_n - \frac{1}{\bm{x}^\top\bm{H}_n\bm{x}} \bm{H}_n^\top\bm{x}\bm{x}^\top\bm{H}_n \\
+&\text{where } \bm{A} = \bm{G}_n - \frac{1}{(\bm{x}\circ\bm{x})^\top \bm{G}_n (\bm{x}\circ\bm{x})} \bm{G}_n^\top (\bm{x}\circ\bm{x})(\bm{x}\circ\bm{x})^\top \bm{G}_n \\
+\\
+\text{Bayes Factor:}&\\
+B =& \frac{c_2^3(2\pi)^{-\frac{n}{2}} |\bm{A}|^{1/2} \text{exp}\bigg( -\frac{1}{2} \bm{y}^\top\bm{A} \bm{y} \bigg) }{c_1^2(2\pi)^{-\frac{n}{2}} |\bm{C}|^{1/2} \text{exp}\bigg( -\frac{1}{2} \bm{y}^\top \bm{C} \bm{y}\bigg)} \\
+=& \frac{c_2^3}{c_1^2}\cdot\frac{ |\bm{A}|^{1/2} \text{exp}\bigg( -\frac{1}{2} \bm{y}^\top\bm{A} \bm{y} \bigg) }{ |\bm{C}|^{1/2} \text{exp}\bigg( -\frac{1}{2} \bm{y}^\top \bm{C} \bm{y}\bigg)} \\
+\end{align*}
+```
+From the Bayes Factor we can see that it depends on the values of $c_1$ and $c_2$.
