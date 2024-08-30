@@ -42,7 +42,7 @@ This project provides insights into the application of Bayesian methods in chang
 
 # Model Comparison on Regression Models
 ## Objective
-- The objective of this project is to compare two competing regression models, a linear model and a quadratic model, using a given dataset. We aim to determine the marginal distributions for each model and evaluate their performance using the Bayes factor. Additionally, we will explore how the Bayes factor changes when the prior distributions are replaced by improper constant priors.
+The objective of this project is to compare two competing regression models, a linear model and a quadratic model, using a given dataset. We aim to determine the marginal distributions for each model and evaluate their performance using the Bayes factor. Additionally, we will explore how the Bayes factor changes when the prior distributions are replaced by improper constant priors.
 ## Project Overview
 - This project involves comparing two competing regression models using a given dataset. Below is a summary of the important questions addressed:
 ### Question 3.1
